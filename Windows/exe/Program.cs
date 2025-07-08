@@ -1,30 +1,18 @@
-﻿using System.Runtime.InteropServices;
+﻿// --------------------------------------------------------------------------------------------------------------------
+// <copyright file="Program.cs" company="Microsoft Corporation.">
+//   All rights reserved.
+// </copyright>
+// <summary>
+//   AzFilesSmbMIClient is a command line utility to manage Azure Files SMB authentication using Managed Identities or OAuth tokens.
+// </summary>
+// --------------------------------------------------------------------------------------------------------------------
 
 namespace AzFilesSmbMIClient
 {
+    using Microsoft.AzFilesSmbMI;
+
     class Program
     {
-        public class NativeMethods
-        {
-            [DllImport("AzureFilesSmbAuth.DLL", SetLastError = false,
-                CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
-            public static extern int SmbSetCredential(
-                        string FileEndpointUri,
-                        string OAuthToken,
-                        [MarshalAs(UnmanagedType.U8)] out ulong ExpiryInSeconds);
-
-            [DllImport("AzureFilesSmbAuth.DLL", SetLastError = false,
-                CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
-            public static extern int SmbSetCredentialUsingTokenFromIMDS(
-                        string FileEndpointUri,
-                        [MarshalAs(UnmanagedType.U8)] out ulong ExpiryInSeconds);
-
-            [DllImport("AzureFilesSmbAuth.DLL", SetLastError = false,
-                CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
-            public static extern int SmbClearCredential(
-                        string FileEndpointUri);
-        }
-
         static public void ShowUsage()
         {
             Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set       <uri>");
@@ -65,11 +53,11 @@ namespace AzFilesSmbMIClient
             {
                 if (token.Length > 0)
                 {
-                    hResult = NativeMethods.SmbSetCredential(uri, token, out ulong expiryInSeconds);
+                    hResult = AzFilesSmbMI.SmbSetCredential(uri, token, out ulong expiryInSeconds);
                 }
                 else
                 {
-                    hResult = NativeMethods.SmbSetCredentialUsingTokenFromIMDS(uri, out ulong expiryInSeconds);
+                    hResult = AzFilesSmbMI.SmbSetCredentialUsingTokenFromIMDS(uri, out ulong expiryInSeconds);
                 }
             }
             else if (verb.Equals("REFRESH"))
@@ -87,7 +75,7 @@ namespace AzFilesSmbMIClient
                 {
                     while (true)
                     {
-                        hResult = NativeMethods.SmbSetCredentialUsingTokenFromIMDS(uri, out ulong expiryInSeconds);
+                        hResult = AzFilesSmbMI.SmbSetCredentialUsingTokenFromIMDS(uri, out ulong expiryInSeconds);
 
                         if(AzureFilesSmbAuthErrorCode.Failed(hResult))
                         {
@@ -115,7 +103,7 @@ namespace AzFilesSmbMIClient
             }
             else if (verb.Equals("CLEAR"))
             {
-                hResult = NativeMethods.SmbClearCredential(uri);
+                hResult = AzFilesSmbMI.SmbClearCredential(uri);
             }
             else
             {
