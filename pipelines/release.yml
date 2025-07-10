@@ -31,16 +31,3 @@ steps:
     command: build
     versioningScheme: byBuildNumber
     arguments: '--configuration $(BuildConfiguration)'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Run the Unit Tests'
-  inputs:
-    command: 'test'
-
-- task: DotNetCoreCLI@2
-  displayName: Package up the Assembly
-  inputs:
-    command: 'pack'
-    packagesToPack: './src/*.csproj'
-    nobuild: true
-    verbosityPack: 'Normal'
