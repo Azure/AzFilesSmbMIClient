@@ -30,3 +30,4 @@ steps:
     command: build
     versioningScheme: byBuildNumber
     arguments: '--configuration $(BuildConfiguration)'
+    projects: $(Build.SourcesDirectory)/windows/exe/AzFilesSmbMIClient.csproj
