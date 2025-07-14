@@ -13,7 +13,7 @@ on:
 
 env:
   # Path to the solution file relative to the root of the project.
-  DLL_FILE_PATH: .\Windows\dotnet\dll\AzFilesSmbMIClient.csproj
+  DLL_FILE_PATH: .\Windows\dotnet\dll\AzFilesSmbMI.csproj
   EXE_FILE_PATH: .\windows\exe\AzFilesSmbMIClient.csproj
 
   # Configuration type to build.
