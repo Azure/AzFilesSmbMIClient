@@ -7,26 +7,26 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace Microsoft.AzFilesSmbMI
+namespace Microsoft.Azure.AzFilesSmbMI
 {
     using System.Runtime.InteropServices;
 
     public class AzFilesSmbMI
     {
-        [DllImport("AzureFilesSmbAuth.DLL", SetLastError = false,
+        [DllImport("AzFilesSmbMI.DLL", SetLastError = false,
                 CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
         public static extern int SmbSetCredential(
                         string FileEndpointUri,
                         string OAuthToken,
                         [MarshalAs(UnmanagedType.U8)] out ulong ExpiryInSeconds);
 
-        [DllImport("AzureFilesSmbAuth.DLL", SetLastError = false,
+        [DllImport("AzFilesSmbMI.DLL", SetLastError = false,
             CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
         public static extern int SmbSetCredentialUsingTokenFromIMDS(
                     string FileEndpointUri,
                     [MarshalAs(UnmanagedType.U8)] out ulong ExpiryInSeconds);
 
-        [DllImport("AzureFilesSmbAuth.DLL", SetLastError = false,
+        [DllImport("AzFilesSmbMI.DLL", SetLastError = false,
             CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
         public static extern int SmbClearCredential(
                     string FileEndpointUri);
