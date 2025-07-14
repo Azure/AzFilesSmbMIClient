@@ -6,7 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj" />
+    <ProjectReference Include="..\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj">
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>
