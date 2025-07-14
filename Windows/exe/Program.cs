@@ -9,6 +9,8 @@
 
 namespace AzFilesSmbMIClient
 {
+    using System;
+    using System.Threading;
     using Microsoft.AzFilesSmbMI;
 
     class Program

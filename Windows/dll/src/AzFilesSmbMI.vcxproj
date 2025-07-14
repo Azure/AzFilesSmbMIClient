@@ -71,16 +71,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>AzureFilesSmbAuth</TargetName>
+    <TargetName>AzFilesSmbMI</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>AzureFilesSmbAuth</TargetName>
+    <TargetName>AzFilesSmbMI</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>AzureFilesSmbAuth</TargetName>
+    <TargetName>AzFilesSmbMI</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>AzureFilesSmbAuth</TargetName>
+    <TargetName>AzFilesSmbMI</TargetName>
   </PropertyGroup>
   <PropertyGroup>
     <ProjectDirNoSlash>$(ProjectDir.TrimEnd('\'))</ProjectDirNoSlash>
@@ -89,13 +89,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;AZUREFILESSMBAUTH_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;AzFilesSmbMI_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
-      <ModuleDefinitionFile>AzureFilesSmbAuth.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>AzFilesSmbMI.def</ModuleDefinitionFile>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
@@ -143,7 +143,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
-      <ModuleDefinitionFile>AzureFilesSmbAuth.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>AzFilesSmbMI.def</ModuleDefinitionFile>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
