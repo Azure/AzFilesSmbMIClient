@@ -17,6 +17,8 @@ variables:
   value: ${{ parameters.buildConfig }}
 
 steps:
+- checkout: self
+
 - task: UseDotNet@2
   displayName: Setup .NET SDK Version 9.x
   inputs:
@@ -31,3 +33,24 @@ steps:
     versioningScheme: byBuildNumber
     arguments: '--configuration $(BuildConfiguration)'
     projects: $(Build.SourcesDirectory)/Windows/exe/AzFilesSmbMIClient.csproj
+
+- task: EsrpCodeSigning@3
+  displayName: 'Sign Binary Files'
+  inputs:
+    ConnectedServiceName: 'ESRP Code Signing'
+    FolderPath: '$(Build.SourcesDirectory)'
+    Pattern: '**/*.exe,**/*.dll'
+    signConfigType: 'inlineSignParams'
+    inlineOperation: |
+      [
+        {
+          "KeyCode": "CP-230012",
+          "OperationCode": "SigntoolSign",
+          "Parameters": {
+            "OpusName": "Microsoft",
+            "OpusInfo": "http://www.microsoft.com",
+            "FileDigest": "/fd \"SHA256\"",
+            "PageHash": "/NPH",
+            "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+          },
+          "ToolName": "sign",
