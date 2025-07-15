@@ -60,7 +60,7 @@ extends:
           ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}: # conditionally enable symbolsPublishing for master branch only
             ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
           # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
-          ${{ if eq(parameters['true'], 'true') }}:
+          ${{ if eq('true', 'true') }}:
             ob_nugetPublishing_enabled: true
         steps:
         - checkout: self
