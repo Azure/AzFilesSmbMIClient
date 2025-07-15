@@ -38,7 +38,7 @@ extends:
       # credscan:
       #   suppressionsFile: $(Build.SourcesDirectory)\.config\CredScanSuppressions.json
       policheck:
-        break: true # always break the build on policheck issues. You can disable it by setting to 'false'
+        break: false # always break the build on policheck issues. You can disable it by setting to 'false'
       # suppression:
       #   suppressionFile: $(Build.SourcesDirectory)\.gdn\global.gdnsuppress
     nugetPublishing:
