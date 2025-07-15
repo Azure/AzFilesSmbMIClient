@@ -40,4 +40,4 @@ steps:
     command: 'sign'
     signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
     files_to_sign: '**/*.exe,**/*.dll'
-    search_root: '$(Build.SourcesDirectory)\bin\${{ parameters.buildtype }}\net472'
+    search_root: '$(Build.SourcesDirectory)\bin\release\net472'
