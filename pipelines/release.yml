@@ -34,31 +34,31 @@ steps:
     arguments: '--configuration $(BuildConfiguration)'
     projects: $(Build.SourcesDirectory)/Windows/exe/AzFilesSmbMIClient.csproj
 
-  - task: EsrpCodeSigning@5 # Version 5 of ESRP ADO task supports using MSI auth: https://eng.ms/docs/microsoft-security/identity/trust-and-security-services/tss-high-security-environments/tss-esrp-fabric-and-platform-services/esrp-documentation/tsgs/sfi/tsg502-integrating-esrp-ado-task-into-your-build-pipeline-during-corp-migration
-    displayName: ESRP Package Detached Signing
-    inputs:
-        ConnectedServiceName: 'XSync Vm Extension Ado Connection' # name of new service connection which is the Azure Resource Manager, Workload Identity federation (https://msazure.visualstudio.com/DefaultCollection/One/_settings/adminservices)
-        UseMSIAuthentication: true #  This variable is false by default, needs to be set to true
-        AppRegistrationClientId: 'bff9d552-49fe-4ed2-b400-8a081fa86a42' # Managed Identity Id
-        AppRegistrationTenantId: '33e01921-4d64-4f8c-a055-5bdaffd5e33d' # Tenant Id in which holds Managed Identity, in this case is AME
-        ESRPClientId: 'a0f6fe67-5d78-4c00-8852-01d624f1b83f' # Aad App Id of ESRP
-        AuthAKVName: 'storagesyncagentextnkv' # Name of your Azure KeyVault where auth cert is in.
-        AuthSignCertName: 'xsync-vmextension-signing-cert' # Request signing certificate name 
-        FolderPath: '$(Build.SourcesDirectory)\bin\${{ parameters.buildtype }}\net472' # Folder path where the extension packages are generated after running Ev2ArtifactGenerator.ps1 script.
-        Pattern: '**/*.exe,**/*.dll'
-        signConfigType: 'inlineSignParams'
-        CertificateId: 402
-        inlineOperation: |
-            [
-            {
+- task: EsrpCodeSigning@5 # Version 5 of ESRP ADO task supports using MSI auth: https://eng.ms/docs/microsoft-security/identity/trust-and-security-services/tss-high-security-environments/tss-esrp-fabric-and-platform-services/esrp-documentation/tsgs/sfi/tsg502-integrating-esrp-ado-task-into-your-build-pipeline-during-corp-migration
+  displayName: ESRP Package Detached Signing
+  inputs:
+      ConnectedServiceName: 'XSync Vm Extension Ado Connection' # name of new service connection which is the Azure Resource Manager, Workload Identity federation (https://msazure.visualstudio.com/DefaultCollection/One/_settings/adminservices)
+      UseMSIAuthentication: true #  This variable is false by default, needs to be set to true
+      AppRegistrationClientId: 'bff9d552-49fe-4ed2-b400-8a081fa86a42' # Managed Identity Id
+      AppRegistrationTenantId: '33e01921-4d64-4f8c-a055-5bdaffd5e33d' # Tenant Id in which holds Managed Identity, in this case is AME
+      ESRPClientId: 'a0f6fe67-5d78-4c00-8852-01d624f1b83f' # Aad App Id of ESRP
+      AuthAKVName: 'storagesyncagentextnkv' # Name of your Azure KeyVault where auth cert is in.
+      AuthSignCertName: 'xsync-vmextension-signing-cert' # Request signing certificate name 
+      FolderPath: '$(Build.SourcesDirectory)\bin\${{ parameters.buildtype }}\net472' # Folder path where the extension packages are generated after running Ev2ArtifactGenerator.ps1 script.
+      Pattern: '**/*.exe,**/*.dll'
+      signConfigType: 'inlineSignParams'
+      CertificateId: 402
+      inlineOperation: |
+        [
+          {
                 "KeyCode": "CP-230012",
                 "OperationCode": "Pkcs7DetachedSign",
                 "Parameters": {
                 "Pkcs7Flags":"alg=sha384 contenttype=2.123.456.7.8.9 ts"
                 }
-            }
-            ]
-        SessionTimeout: '60'
-        MaxConcurrency: '50'
-        MaxRetryAttempts: '5'
-        PendingAnalysisWaitTimeoutMinutes: '5'
+          }
+        ]
+      SessionTimeout: '60'
+      MaxConcurrency: '50'
+      MaxRetryAttempts: '5'
+      PendingAnalysisWaitTimeoutMinutes: '5'
