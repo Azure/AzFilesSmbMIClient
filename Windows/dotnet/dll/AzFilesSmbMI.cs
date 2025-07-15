@@ -7,7 +7,7 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Azure.AzFilesSmbMI
+namespace Microsoft.Azure.Files
 {
     using System.Runtime.InteropServices;
 

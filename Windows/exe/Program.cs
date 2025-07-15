@@ -11,7 +11,7 @@ namespace AzFilesSmbMIClient
 {
     using System;
     using System.Threading;
-    using Microsoft.Azure.AzFilesSmbMI;
+    using Microsoft.Azure.Files;
 
     class Program
     {
