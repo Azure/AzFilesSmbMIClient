@@ -37,20 +37,48 @@ steps:
 - task: EsrpCodeSigning@3
   displayName: 'Sign Binary Files'
   inputs:
-    ConnectedServiceName: 'ESRP Code Signing'
+    ConnectedServiceName: 'ESRP CodeSign'
     FolderPath: '$(Build.SourcesDirectory)'
     Pattern: '**/*.exe,**/*.dll'
     signConfigType: 'inlineSignParams'
     inlineOperation: |
-      [
-        {
-          "KeyCode": "CP-230012",
-          "OperationCode": "SigntoolSign",
-          "Parameters": {
-            "OpusName": "Microsoft",
-            "OpusInfo": "http://www.microsoft.com",
-            "FileDigest": "/fd \"SHA256\"",
-            "PageHash": "/NPH",
-            "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+        [
+          {
+              "keyCode": "CP-230012",
+              "operationSetCode": "SigntoolSign",
+              "parameters": [
+              {
+                  "parameterName":"FileDigest",
+                  "parameterValue":"/fd \"SHA256\""
+              },
+              {
+                  "parameterName": "OpusName",
+                  "parameterValue": "Microsoft"
+              },
+              {
+                  "parameterName": "OpusInfo",
+                  "parameterValue": "http://www.microsoft.com"
+              },
+              {
+                  "parameterName": "PageHash",
+                  "parameterValue": "/NPH"
+              },
+              {
+                  "parameterName":"TimeStamp",
+                  "parameterValue":"/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+              }
+              ],
+              "toolName": "sign",
+              "toolVersion": "1.0"
           },
-          "ToolName": "sign",
+          {
+              "keyCode": "CP-230012",
+              "operationSetCode": "SigntoolVerify",
+              "parameters": [ ],
+              "toolName": "sign",
+              "toolVersion": "1.0"
+          }
+        ]
+    SessionTimeout: '60'
+    MaxConcurrency: '50'
+    MaxRetryAttempts: '5'
