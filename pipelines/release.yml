@@ -15,7 +15,8 @@ pool:
 variables:
 - name: buildConfiguration
   value: ${{ parameters.buildConfig }}
-CDP_DEFINITION_BUILD_COUNT: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
+- name: CDP_DEFINITION_BUILD_COUNT
+  value: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
 
 steps:
 - checkout: self
