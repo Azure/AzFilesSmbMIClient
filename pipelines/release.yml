@@ -34,6 +34,15 @@ steps:
     arguments: '--configuration $(BuildConfiguration)'
     projects: $(Build.SourcesDirectory)/Windows/exe/AzFilesSmbMIClient.csproj
 
+- task: onebranch.pipeline.launchtools@1  # https://aka.ms/obpipelines/corext
+  displayName: 'CoreXT prebuild'
+  env:
+    COREXT_ARTIFACTTOOL_PAT_HANDOFF: $(CDP_DEFAULT_CLIENT_PACKAGE_PAT)
+  retryCountOnTaskFailure: 3
+  inputs:
+    command: 'prebuild'
+    single_leg: false
+
 - task: onebranch.pipeline.signing@1
   displayName: 'Sign NuGet Package Binaries'
   inputs:
