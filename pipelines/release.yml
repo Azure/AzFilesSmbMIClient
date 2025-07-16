@@ -80,17 +80,7 @@ extends:
 
         - task: NuGetAuthenticate@1
           inputs:
-            forceReinstallCredentialProvider: true
-            command: 'restore'
-            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'select'
-
-        - task: NuGetAuthenticate@1
-          inputs:
-            forceReinstallCredentialProvider: true
-            command: 'restore'
-            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            feedsToUse: 'select'
+            forceReinstallCredentialProvider: true            
 
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
@@ -117,39 +107,22 @@ extends:
               # List sources to verify
               nuget sources list              
 
-        - task: NuGetCommand@2
-          displayName: 'Restore DLL packages'
-          inputs:
-            command: 'restore'
-            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'select'
-            includeNuGetOrg: true
-            noCache: true
-            verbosity: 'Detailed'
-
-        - task: NuGetCommand@2
-          displayName: 'Restore EXE packages'
-          inputs:
-            command: 'restore'
-            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            feedsToUse: 'select'
-            includeNuGetOrg: true
-            noCache: true
-            verbosity: 'Detailed'
-
         - task: MSBuild@1
-          displayName: 'Build EXE Project'
+          displayName: 'Restore and Build EXE Project'
           inputs:
             solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
             configuration: '$(buildConfiguration)'
             platform: 'Any CPU'
-            msbuildArguments: '/p:RestorePackages=false'
+            msbuildArguments: '/t:Restore;Build /p:RestorePackagesConfig=true /p:RestoreProjectStyle=PackagesConfig'
+          env:
+            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+            NUGET_CERT_REVOCATION_MODE: offline
 
         - task: CopyFiles@2
           displayName: 'Copy binaries to output directory'
           inputs:
             SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(buildConfiguration)\net472'
-            Contents: '**\*.*'
+            Contents: '**/*.exe,**/*.dll'
             TargetFolder: '$(Build.SourcesDirectory)\out'
 
         - task: onebranch.pipeline.signing@1
