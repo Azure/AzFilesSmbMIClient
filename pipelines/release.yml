@@ -145,6 +145,13 @@ extends:
             platform: 'Any CPU'
             msbuildArguments: '/p:RestorePackages=false'
 
+        - task: CopyFiles@2
+          displayName: 'Copy binaries to output directory'
+          inputs:
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(buildConfiguration)\net472'
+            Contents: '**\*.*'
+            TargetFolder: '$(Build.SourcesDirectory)\out'
+
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
           inputs:
