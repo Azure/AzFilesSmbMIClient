@@ -93,34 +93,27 @@ extends:
           inputs:
             targetType: 'inline'
             script: |
-              # Check if nuget.org source already exists and remove it if it does
-              $existingSources = dotnet nuget list source
-              if ($existingSources -match "nuget.org") {
-                  Write-Host "Removing existing nuget.org source"
-                  dotnet nuget remove source nuget.org
-              }
-              
-              # Add the nuget.org source
-              dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org  
-              
               # Set environment variables for SSL handling
               [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Process")
               [Environment]::SetEnvironmentVariable("NUGET_CERT_REVOCATION_MODE", "offline", "Process")
               [Environment]::SetEnvironmentVariable("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true", "Machine")
+              
+              # Configure NuGet sources
+              nuget sources clear
+              nuget sources add -name "nuget.org" -source "https://api.nuget.org/v3/index.json"
+              
+              # List sources to verify
+              nuget sources list
 
-        - task: DotNetCoreCLI@2
-          displayName: 'Restore DLL packages'
+        - task: PowerShell@2
+          displayName: 'Configure NuGet SSL Settings'
           inputs:
-            command: 'restore'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'select'
-            includeNuGetOrg: true
-            noCache: true
-            verbosityRestore: 'Normal'
-          env:
-            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
-            NUGET_CERT_REVOCATION_MODE: offline
-            DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+            targetType: 'inline'
+            script: |
+              [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+              
+              # Add the nuget.org source
+              dotnet restore '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
 
         - task: DotNetCoreCLI@2
           displayName: 'Restore EXE packages'
