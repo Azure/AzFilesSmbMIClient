@@ -116,6 +116,14 @@ extends:
               
               # List sources to verify
               nuget sources list            
+        
+        - task: NuGetRestore@1
+          displayName: 'Restore DLL packages'
+          inputs:            
+            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            selectOrConfig: 'config'
+            nugetConfigPath: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\.config\NuGet.config'
+            verbosity: 'Detailed'
 
         - task: DotNetCoreCLI@2
           displayName: 'Build EXE Project'
