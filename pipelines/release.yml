@@ -75,28 +75,11 @@ extends:
             includePreviewVersions: true
             
         - task: DotNetCoreCLI@2
-          displayName: 'Build DLL Project'
-          inputs:
-            command: 'build'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            arguments: '--configuration $(buildConfiguration)'
-            
-        - task: DotNetCoreCLI@2
-          displayName: 'Restore packages for EXE'
-          inputs:
-            command: 'restore'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            feedsToUse: 'select'
-            includeNuGetOrg: true
-            noCache: true
-            verbosityRestore: 'Normal'
-            
-        - task: DotNetCoreCLI@2
           displayName: 'Build EXE Project'
           inputs:
             command: 'build'
             projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            arguments: '--configuration $(buildConfiguration) --no-restore'
+            arguments: '--configuration $(buildConfiguration)'
         
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
@@ -112,4 +95,4 @@ extends:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
             files_to_sign: '**/*.exe,**/*.dll'
-            search_root: '$(Build.SourcesDirectory)\windows\exe\bin\release\net472'
+            search_root: '$(Build.SourcesDirectory)\windows\exe\bin\$(buildConfiguration)\net472'
