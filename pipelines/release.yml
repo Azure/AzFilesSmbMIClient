@@ -94,7 +94,7 @@ extends:
             command: build
             versioningScheme: byBuildNumber
             arguments: '--configuration $(BuildConfiguration)'
-            projects: $(Build.SourcesDirectory)/Windows/exe/AzFilesSmbMIClient.csproj
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
 
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
