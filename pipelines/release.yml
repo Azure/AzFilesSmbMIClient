@@ -113,7 +113,7 @@ extends:
             solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
             configuration: '$(buildConfiguration)'
             platform: 'Any CPU'
-            msbuildArguments: '/t:Restore;Build /p:RestorePackagesConfig=true /p:RestoreProjectStyle=PackagesConfig'
+            restoreNugetPackages: true
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
             NUGET_CERT_REVOCATION_MODE: offline
