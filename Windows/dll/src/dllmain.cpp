@@ -12,6 +12,7 @@ Abstract:
 
 --*/
 
+#include "pch.h"
 #include "framework.h"
 #include "AzFilesSmbMI.h"
 

@@ -13,7 +13,8 @@ on:
 
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .\windows\exe\AzFilesSmbMIClient.csproj
+  DLL_FILE_PATH: .\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj
+  EXE_FILE_PATH: .\windows\exe\AzFilesSmbMIClient.csproj
 
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
@@ -35,10 +36,12 @@ jobs:
       
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+      run: | 
+          nuget restore ${{env.DLL_FILE_PATH}}
+          nuget restore ${{env.EXE_FILE_PATH}}
       
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.EXE_FILE_PATH}}

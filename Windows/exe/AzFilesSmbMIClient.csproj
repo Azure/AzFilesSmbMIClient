@@ -2,9 +2,13 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFramework>net472</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj">
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
 
 </Project>
