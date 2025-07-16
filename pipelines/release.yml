@@ -116,22 +116,33 @@ extends:
               
               # List sources to verify
               nuget sources list            
-        
-        - task: NuGetRestore@1
-          displayName: 'Restore DLL packages'
-          inputs:            
-            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            selectOrConfig: 'config'
-            nugetConfigPath: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\.config\NuGet.config'
-            verbosity: 'Detailed'
 
-        - task: DotNetCoreCLI@2
+        - task: NuGetCommand@2
+          displayName: 'Restore DLL packages'
+          inputs:
+            command: 'restore'
+            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            feedsToUse: 'config'
+            nugetConfigPath: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\NuGet.config'
+            verbosity: 'Detailed'            
+
+        - task: NuGetCommand@2
+          displayName: 'Restore EXE packages'
+          inputs:
+            command: 'restore'
+            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            feedsToUse: 'select'
+            includeNuGetOrg: true
+            noCache: true
+            verbosity: 'Normal'
+
+        - task: MSBuild@1
           displayName: 'Build EXE Project'
           inputs:
-            command: build
-            versioningScheme: byBuildNumber
-            arguments: '--configuration $(BuildConfiguration)'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            configuration: '$(buildConfiguration)'
+            platform: 'Any CPU'
+            msbuildArguments: '/p:RestorePackages=false'
 
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
