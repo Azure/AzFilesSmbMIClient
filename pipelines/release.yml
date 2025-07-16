@@ -9,6 +9,8 @@ parameters:
 trigger: none # https://aka.ms/obpipelines/triggers
 
 variables:
+- name: system.debug
+  value: true
 - name: buildConfiguration
   value: ${{ parameters.buildConfig }}
 - name: CDP_DEFINITION_BUILD_COUNT
@@ -120,7 +122,7 @@ extends:
           inputs:
             command: build
             versioningScheme: byBuildNumber
-            arguments: '--configuration $(BuildConfiguration) --no-restore'
+            arguments: '--configuration $(BuildConfiguration)'
             projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
 
         - task: onebranch.pipeline.signing@1
