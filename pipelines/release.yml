@@ -105,8 +105,12 @@ extends:
               # List sources to verify
               nuget sources list
 
+              #restore DLL project to verify SSL settings
+              [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+              nuget restore '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+
         - task: PowerShell@2
-          displayName: 'Configure NuGet SSL Settings'
+          displayName: 'Restore EXE Project SSL Settings'
           inputs:
             targetType: 'inline'
             script: |
