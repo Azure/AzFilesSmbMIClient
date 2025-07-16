@@ -66,6 +66,14 @@ extends:
             ob_nugetPublishing_enabled: true
         steps:
         - checkout: self
+        - task: NuGetRestore@1
+          inputs:
+            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            selectOrConfig: 'select'
+        - task: NuGetRestore@1
+          inputs:
+            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\windows\exe\AzFilesSmbMIClient.csproj'
+            selectOrConfig: 'select'
         - task: MSBuild@1
           displayName: 'Build The Client'
           inputs:
