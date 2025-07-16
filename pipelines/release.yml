@@ -98,7 +98,7 @@ extends:
               }
               
               # Add the nuget.org source
-              dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+              dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org  
               
               # Set environment variables for SSL handling
               [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Process")
@@ -108,7 +108,7 @@ extends:
           displayName: 'Restore EXE packages'
           inputs:
             command: 'restore'
-            projects: '$(Build.SourcesDirectory)\Windows\exe\AzFilesSmbMIClient.csproj'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
             feedsToUse: 'select'
             includeNuGetOrg: true
             noCache: true
