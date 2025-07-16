@@ -103,7 +103,20 @@ extends:
               # Set environment variables for SSL handling
               [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Process")
               [Environment]::SetEnvironmentVariable("NUGET_CERT_REVOCATION_MODE", "offline", "Process")
-            
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Restore DLL packages'
+          inputs:
+            command: 'restore'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            feedsToUse: 'select'
+            includeNuGetOrg: true
+            noCache: true
+            verbosityRestore: 'Normal'
+          env:
+            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+            NUGET_CERT_REVOCATION_MODE: offline
+
         - task: DotNetCoreCLI@2
           displayName: 'Restore EXE packages'
           inputs:
