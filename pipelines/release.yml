@@ -106,8 +106,8 @@ extends:
             targetType: 'inline'
             script: |
               # Set environment variables for SSL handling
-              [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Process")
-              [Environment]::SetEnvironmentVariable("NUGET_CERT_REVOCATION_MODE", "offline", "Process")
+              [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Machine")
+              [Environment]::SetEnvironmentVariable("NUGET_CERT_REVOCATION_MODE", "offline", "Machine")
               [Environment]::SetEnvironmentVariable("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true", "Machine")
               
               # Configure NuGet sources
@@ -115,16 +115,17 @@ extends:
               nuget sources add -name "nuget.org" -source "https://api.nuget.org/v3/index.json"
               
               # List sources to verify
-              nuget sources list            
+              nuget sources list              
 
         - task: NuGetCommand@2
           displayName: 'Restore DLL packages'
           inputs:
             command: 'restore'
             restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'config'
-            nugetConfigPath: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\NuGet.config'
-            verbosity: 'Detailed'            
+            feedsToUse: 'select'
+            includeNuGetOrg: true
+            noCache: true
+            verbosity: 'Detailed'
 
         - task: NuGetCommand@2
           displayName: 'Restore EXE packages'
@@ -134,7 +135,7 @@ extends:
             feedsToUse: 'select'
             includeNuGetOrg: true
             noCache: true
-            verbosity: 'Normal'
+            verbosity: 'Detailed'
 
         - task: MSBuild@1
           displayName: 'Build EXE Project'
@@ -150,4 +151,4 @@ extends:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
             files_to_sign: '**/*.exe,**/*.dll'
-            search_root: '$(Build.SourcesDirectory)\windows\exe\bin\$(buildConfiguration)\net472'
+            search_root: '$(Build.SourcesDirectory)\Windows\exe\bin\$(buildConfiguration)\net472'
