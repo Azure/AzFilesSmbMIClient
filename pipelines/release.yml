@@ -83,6 +83,13 @@ extends:
             restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
             feedsToUse: 'select'
 
+        - task: NuGetAuthenticate@1
+          inputs:
+            forceReinstallCredentialProvider: true
+            command: 'restore'
+            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            feedsToUse: 'select'
+
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
           inputs:
@@ -109,35 +116,12 @@ extends:
               nuget sources list            
 
         - task: DotNetCoreCLI@2
-          displayName: 'Restore DLL packages'
-          inputs:
-            command: 'restore'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'config'
-            nugetConfigPath: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\NuGet.config'
-            includeNuGetOrg: true
-            verbosityRestore: 'Normal'
-
-        - task: DotNetCoreCLI@2
-          displayName: 'Restore EXE packages'
-          inputs:
-            command: 'restore'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            feedsToUse: 'select'
-            includeNuGetOrg: true
-            noCache: true
-            verbosityRestore: 'Normal'
-          env:
-            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
-            NUGET_CERT_REVOCATION_MODE: offline
-
-        - task: DotNetCoreCLI@2
           displayName: 'Build EXE Project'
           inputs:
             command: build
             versioningScheme: byBuildNumber
             arguments: '--configuration $(BuildConfiguration)'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj --no-restore'
 
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
