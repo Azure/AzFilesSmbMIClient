@@ -84,13 +84,20 @@ extends:
             major: '1'
             minor: '0'
             exclude_commit: true
-            
+
         - task: PowerShell@2
           displayName: 'Configure NuGet SSL Settings'
           inputs:
             targetType: 'inline'
             script: |
-              # Configure NuGet to handle SSL issues
+              # Check if nuget.org source already exists and remove it if it does
+              $existingSources = dotnet nuget list source
+              if ($existingSources -match "nuget.org") {
+                  Write-Host "Removing existing nuget.org source"
+                  dotnet nuget remove source nuget.org
+              }
+              
+              # Add the nuget.org source
               dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
               
               # Set environment variables for SSL handling
