@@ -13,10 +13,11 @@ Abstract:
 
 --*/
 
+#include "pch.h"
 #include "framework.h"
 #include <string>
 #include <winhttp.h>
-#include <x_ntsecapi.h>
+#include <ntsecapi.h>
 #include <ctime>
 #include <memory>
 #include <vector>

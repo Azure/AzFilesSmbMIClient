@@ -2,5 +2,6 @@ LIBRARY      "AzFilesSmbMI.DLL"
 
 EXPORTS
     SmbSetCredential
+    SmbRefreshCredential
     SmbClearCredential
-    SmbSetCredentialUsingTokenFromIMDS
+    
