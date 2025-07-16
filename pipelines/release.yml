@@ -6,8 +6,7 @@ parameters:
     - Debug
     - Release
 
-trigger:
-- master
+trigger: none # https://aka.ms/obpipelines/triggers
 
 pool:
   vmImage: 'windows-latest'
@@ -45,7 +44,7 @@ extends:
       #   suppressionFile: $(Build.SourcesDirectory)\.gdn\global.gdnsuppress
     nugetPublishing:
       feeds:
-        - name: XSync
+        - name: Official
           files_to_publish: 'StorageFiles*.nupkg'
     stages:
     - stage: build
@@ -59,7 +58,7 @@ extends:
           # https://aka.ms/obpipelines/sdl
           ob_sdl_binskim_break: false # always break the build on binskim issues, even if TSA enabled. You can disable it by setting to 'false'
           ob_sdl_roslyn_break: false
-          ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}: # conditionally enable symbolsPublishing for master branch only
+          ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
             ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
           # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
           ${{ if eq('true', 'true') }}:
@@ -71,13 +70,14 @@ extends:
           displayName: 'Install .NET SDK'
           inputs:
             packageType: 'sdk'
-            version: '7.x'
+            version: '9.x'
             includePreviewVersions: true
             
         - task: DotNetCoreCLI@2
           displayName: 'Build EXE Project'
           inputs:
-            command: 'build'
+            command: 'custom'
+            custom: msbuild
             projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
             arguments: '--configuration $(buildConfiguration)'
         
