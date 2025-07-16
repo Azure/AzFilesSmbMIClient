@@ -8,9 +8,6 @@ parameters:
 
 trigger: none # https://aka.ms/obpipelines/triggers
 
-pool:
-  vmImage: 'windows-latest'
-
 variables:
 - name: buildConfiguration
   value: ${{ parameters.buildConfig }}
@@ -87,6 +84,31 @@ extends:
             major: '1'
             minor: '0'
             exclude_commit: true
+            
+        - task: PowerShell@2
+          displayName: 'Configure NuGet SSL Settings'
+          inputs:
+            targetType: 'inline'
+            script: |
+              # Configure NuGet to handle SSL issues
+              dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+              
+              # Set environment variables for SSL handling
+              [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Process")
+              [Environment]::SetEnvironmentVariable("NUGET_CERT_REVOCATION_MODE", "offline", "Process")
+            
+        - task: DotNetCoreCLI@2
+          displayName: 'Restore EXE packages'
+          inputs:
+            command: 'restore'
+            projects: '$(Build.SourcesDirectory)\Windows\exe\AzFilesSmbMIClient.csproj'
+            feedsToUse: 'select'
+            includeNuGetOrg: true
+            noCache: true
+            verbosityRestore: 'Normal'
+          env:
+            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+            NUGET_CERT_REVOCATION_MODE: offline
 
         - task: DotNetCoreCLI@2
           displayName: 'Build EXE Project'
