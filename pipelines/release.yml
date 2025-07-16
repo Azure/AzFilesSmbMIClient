@@ -114,6 +114,7 @@ extends:
             configuration: '$(buildConfiguration)'
             platform: 'Any CPU'
             restoreNugetPackages: true
+            verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
             NUGET_CERT_REVOCATION_MODE: offline
