@@ -76,10 +76,9 @@ extends:
         - task: DotNetCoreCLI@2
           displayName: 'Build EXE Project'
           inputs:
-            command: 'custom'
+            command: custom
             custom: msbuild
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            arguments: '--configuration $(buildConfiguration)'
+            arguments: '/m /p:Configuration=$(buildConfiguration) $(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
         
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
