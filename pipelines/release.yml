@@ -79,6 +79,9 @@ extends:
         - task: NuGetAuthenticate@1
           inputs:
             forceReinstallCredentialProvider: true
+            command: 'restore'
+            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            feedsToUse: 'select'
 
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
@@ -103,21 +106,17 @@ extends:
               nuget sources add -name "nuget.org" -source "https://api.nuget.org/v3/index.json"
               
               # List sources to verify
-              nuget sources list
+              nuget sources list            
 
-              #restore DLL project to verify SSL settings
-              [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-              nuget restore '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-
-        - task: PowerShell@2
-          displayName: 'Restore EXE Project SSL Settings'
+        - task: DotNetCoreCLI@2
+          displayName: 'Restore DLL packages'
           inputs:
-            targetType: 'inline'
-            script: |
-              [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-              
-              # Add the nuget.org source
-              dotnet restore '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            command: 'restore'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            feedsToUse: 'config'
+            nugetConfigPath: 'NuGet.config'
+            includeNuGetOrg: true
+            verbosityRestore: 'Normal'
 
         - task: DotNetCoreCLI@2
           displayName: 'Restore EXE packages'
