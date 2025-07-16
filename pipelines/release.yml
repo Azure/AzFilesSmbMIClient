@@ -108,6 +108,18 @@ extends:
               nuget sources list              
 
         - task: MSBuild@1
+          displayName: 'Restore and Build DLL Project'
+          inputs:
+            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+            configuration: '$(buildConfiguration)'
+            platform: 'Any CPU'
+            restoreNugetPackages: true
+            verbosity: 'Detailed'
+          env:
+            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+            NUGET_CERT_REVOCATION_MODE: offline
+
+        - task: MSBuild@1
           displayName: 'Restore and Build EXE Project'
           inputs:
             solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
