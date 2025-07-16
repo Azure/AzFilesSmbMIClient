@@ -72,23 +72,14 @@ extends:
           inputs:
             packageType: 'sdk'
             version: '6.x'
-            
-        - task: DotNetCoreCLI@2
-          displayName: 'Restore packages for DLL'
-          inputs:
-            command: 'restore'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'select'
-            includeNuGetOrg: true
-            noCache: true
-            verbosityRestore: 'Normal'
+            includePreviewVersions: true
             
         - task: DotNetCoreCLI@2
           displayName: 'Build DLL Project'
           inputs:
             command: 'build'
             projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            arguments: '--configuration $(buildConfiguration) --no-restore'
+            arguments: '--configuration $(buildConfiguration)'
             
         - task: DotNetCoreCLI@2
           displayName: 'Restore packages for EXE'
