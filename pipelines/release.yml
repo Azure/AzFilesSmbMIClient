@@ -72,23 +72,29 @@ extends:
             packageType: 'sdk'
             version: '9.x'
             includePreviewVersions: true
-            
-        - task: DotNetCoreCLI@2
-          displayName: 'Build EXE Project'
+            installationPath: $(Agent.ToolsDirectory)/dotnet
+        
+        - task: NuGetToolInstaller@1
+
+        - task: NuGetAuthenticate@1
           inputs:
-            command: custom
-            custom: msbuild
-            arguments: '/m /p:Configuration=$(buildConfiguration) $(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-          env:
-            PowerShellPlatform: ${{ parameters.PowerShellPlatform }}
+            forceReinstallCredentialProvider: true
 
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
           inputs:
             system: 'RevisionCounter'
-            major: '23'
+            major: '1'
             minor: '0'
             exclude_commit: true
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Build EXE Project'
+          inputs:
+            command: build
+            versioningScheme: byBuildNumber
+            arguments: '--configuration $(BuildConfiguration)'
+            projects: $(Build.SourcesDirectory)/Windows/exe/AzFilesSmbMIClient.csproj
 
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
