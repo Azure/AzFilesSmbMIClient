@@ -107,7 +107,7 @@ extends:
 
               #restore DLL project to verify SSL settings
               [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-              nuget restore '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+              nuget restore '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
 
         - task: PowerShell@2
           displayName: 'Restore EXE Project SSL Settings'
