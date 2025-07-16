@@ -11,14 +11,23 @@ trigger: none # https://aka.ms/obpipelines/triggers
 variables:
 - name: system.debug
   value: true
-- name: buildConfiguration
+- name: BuildConfiguration
   value: ${{ parameters.buildConfig }}
-- name: buildPlatform
+- name: BuildPlatform
   value: 'AnyCPU'
 - name: CDP_DEFINITION_BUILD_COUNT
   value: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
 - name: WindowsContainerImage
   value: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest' # Docker image which is used to build the project https://aka.ms/obpipelines/containers
+
+- name: BuildOutput
+  value: '$(Build.SourcesDirectory)\out'
+- name: PackageOutput
+  value: '$(BuildOutput)\packages'
+- name: DllFilePath
+  value: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+- name: ExeFilePath
+  value: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
 
 resources:
   repositories:
@@ -112,9 +121,9 @@ extends:
         - task: MSBuild@1
           displayName: 'Restore and Build DLL Project'
           inputs:
-            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            configuration: '$(buildConfiguration)'
-            platform: $(buildPlatform)
+            solution: '$(DllFilePath)'
+            configuration: '$(BuildConfiguration)'
+            platform: $(BuildPlatform)
             restoreNugetPackages: true
             verbosity: 'Detailed'
           env:
@@ -124,9 +133,9 @@ extends:
         - task: MSBuild@1
           displayName: 'Restore and Build EXE Project'
           inputs:
-            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
-            configuration: '$(buildConfiguration)'
-            platform: $(buildPlatform)
+            solution: '$(ExeFilePath)'
+            configuration: '$(BuildConfiguration)'
+            platform: $(BuildPlatform)
             restoreNugetPackages: true
             verbosity: 'Detailed'
           env:
@@ -136,9 +145,9 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy binaries to output directory'
           inputs:
-            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(buildConfiguration)\net472'
-            Contents: '**/*.exe,**/*.dll'
-            TargetFolder: '$(Build.SourcesDirectory)\out'
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildConfiguration)\net472'
+            Contents: '**/*.exe'            
+            TargetFolder: '$(BuildOutput)'
 
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
@@ -146,4 +155,16 @@ extends:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
             files_to_sign: '**/*.exe,**/*.dll'
-            search_root: '$(Build.SourcesDirectory)\out'
+            search_root: '$(BuildOutput)'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Foundation: Pack'
+          inputs:
+            command: 'pack'
+            packagesToPack: '$(DllFilePath)'
+            packDirectory: '$(PackageOutput)'
+            nobuild: true
+            buildProperties: 'GeneratePackageOnBuild=true;BuildProjectReferences=false'
+            versioningScheme: 'byEnvVar'
+            versionEnvVar: 'CDP_FILE_VERSION_NUMERIC_NOLEADINGZEROS'
+            verbosityPack: 'Normal'
