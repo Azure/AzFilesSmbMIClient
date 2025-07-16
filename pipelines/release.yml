@@ -120,8 +120,8 @@ extends:
           inputs:
             command: build
             versioningScheme: byBuildNumber
-            arguments: '--configuration $(BuildConfiguration)'
-            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj --no-restore'
+            arguments: '--configuration $(BuildConfiguration) --no-restore'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
 
         - task: onebranch.pipeline.signing@1
           displayName: 'Sign NuGet Package Binaries'
