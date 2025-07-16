@@ -72,7 +72,7 @@ extends:
           inputs:
             script: |
               msbuild /m /p:Configuration=$(BuildConfiguration) AzFilesSmbMIClient.csproj              
-            workingDirectory: '$(Build.SourcesDirectory)\windows\exe\'
+            workingDirectory: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\windows\exe\'
         
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
