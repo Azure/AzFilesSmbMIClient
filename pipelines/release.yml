@@ -66,26 +66,33 @@ extends:
             ob_nugetPublishing_enabled: true
         steps:
         - checkout: self
-        - task: NuGetToolInstaller@1
-          displayName: 'Install Latest NuGet'
+
+        - task: UseDotNet@2
+          displayName: 'Install .NET SDK'
           inputs:
-            versionSpec: '>=5.0.0'
-        - task: NuGetCommand@2
-          displayName: 'Restore NuGet Packages for DLL'
-          inputs:
-            command: 'restore'
-            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
-            feedsToUse: 'select'
-            nugetConfigPath: '$(Build.SourcesDirectory)\NuGet.config'
-            includeNuGetOrg: true
-        - task: NuGetCommand@2
-          displayName: 'Restore NuGet Packages for EXE'
+            packageType: 'sdk'
+            version: '6.x'
+            
+        - task: DotNetCoreCLI@2
+          displayName: 'Restore packages for DLL'
           inputs:
             command: 'restore'
-            restoreSolution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\windows\exe\AzFilesSmbMIClient.csproj'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
             feedsToUse: 'select'
-            nugetConfigPath: '$(Build.SourcesDirectory)\NuGet.config'
             includeNuGetOrg: true
+            noCache: true
+            verbosityRestore: 'Normal'
+            
+        - task: DotNetCoreCLI@2
+          displayName: 'Restore packages for EXE'
+          inputs:
+            command: 'restore'
+            projects: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
+            feedsToUse: 'select'
+            includeNuGetOrg: true
+            noCache: true
+            verbosityRestore: 'Normal'
+            
         - task: MSBuild@1
           displayName: 'Build The Client'
           inputs:
