@@ -13,6 +13,8 @@ variables:
   value: true
 - name: buildConfiguration
   value: ${{ parameters.buildConfig }}
+- name: buildPlatform
+  value: 'AnyCPU'
 - name: CDP_DEFINITION_BUILD_COUNT
   value: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
 - name: WindowsContainerImage
@@ -112,7 +114,7 @@ extends:
           inputs:
             solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
             configuration: '$(buildConfiguration)'
-            platform: 'Any CPU'
+            platform: $(buildPlatform)
             restoreNugetPackages: true
             verbosity: 'Detailed'
           env:
@@ -124,7 +126,7 @@ extends:
           inputs:
             solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
             configuration: '$(buildConfiguration)'
-            platform: 'Any CPU'
+            platform: $(buildPlatform)
             restoreNugetPackages: true
             verbosity: 'Detailed'
           env:
@@ -144,4 +146,4 @@ extends:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
             files_to_sign: '**/*.exe,**/*.dll'
-            search_root: '$(Build.SourcesDirectory)\Windows\exe\bin\$(buildConfiguration)\net472'
+            search_root: '$(Build.SourcesDirectory)\out'
