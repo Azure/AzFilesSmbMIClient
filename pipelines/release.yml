@@ -6,29 +6,228 @@ parameters:
     - Debug
     - Release
 
-trigger:
-- master
-
-pool:
-  vmImage: 'windows-latest'
+trigger: none # https://aka.ms/obpipelines/triggers
 
 variables:
-- name: buildConfiguration
+- name: system.debug
+  value: true
+- name: BuildConfiguration
   value: ${{ parameters.buildConfig }}
-- group: CodeSigning
+- name: BuildPlatform
+  value: 'AnyCPU'
+- name: CDP_DEFINITION_BUILD_COUNT
+  value: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
+- name: WindowsContainerImage
+  value: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest' # Docker image which is used to build the project https://aka.ms/obpipelines/containers
 
-steps:
-- task: UseDotNet@2
-  displayName: Setup .NET SDK Version 9.x
-  inputs:
-    packageType: sdk
-    version: 9.x
-    includePreviewVersions: true
+- name: BuildOutput
+  value: '$(Build.SourcesDirectory)\out'
+- name: PackageOutput
+  value: '$(BuildOutput)\packages'
+- name: DllFilePath
+  value: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj'
+- name: ExeFilePath
+  value: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\AzFilesSmbMIClient.csproj'
 
-- task: DotNetCoreCLI@2
-  displayName: 'Build the Assembly'
-  inputs:
-    command: build
-    versioningScheme: byBuildNumber
-    arguments: '--configuration $(BuildConfiguration)'
-    projects: $(Build.SourcesDirectory)/Windows/exe/AzFilesSmbMIClient.csproj
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: OneBranch.Pipelines/GovernedTemplates
+      ref: refs/heads/main
+
+extends:
+  template: v2/OneBranch.Official.CrossPlat.yml@templates # https://aka.ms/obpipelines/templates
+  parameters:
+    featureFlags:
+      WindowsHostVersion:
+        Version: 2022
+      EnableCDPxPAT: false
+    cloudvault: # https://aka.ms/obpipelines/cloudvault
+      enabled: false
+    globalSdl: # https://aka.ms/obpipelines/sdl
+      tsa:
+        enabled: false # onebranch publish all sdl results to TSA. If TSA is disabled all SDL tools will forced into 'break' build mode.
+      # credscan:
+      #   suppressionsFile: $(Build.SourcesDirectory)\.config\CredScanSuppressions.json
+      policheck:
+        break: false # always break the build on policheck issues. You can disable it by setting to 'false'
+      # suppression:
+      #   suppressionFile: $(Build.SourcesDirectory)\.gdn\global.gdnsuppress
+    nugetPublishing:
+      feeds:
+        - name: Official
+          files_to_publish: '*.nupkg'
+          continueOnConflict: false
+    stages:
+    - stage: build
+      jobs:
+      - job: main
+        pool:
+          type: windows  # read more about custom job pool types at https://aka.ms/obpipelines/yaml/jobs
+
+        variables: # More settings at https://aka.ms/obpipelines/yaml/jobs
+          ob_outputDirectory: '$(BuildOutput)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
+          # https://aka.ms/obpipelines/sdl
+          ob_sdl_binskim_break: false # always break the build on binskim issues, even if TSA enabled. You can disable it by setting to 'false'
+          ob_sdl_roslyn_break: false
+          #${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
+          ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
+          # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
+          ${{ if eq(variables['BuildConfiguration'], 'Release') }}:
+            ob_nugetPublishing_enabled: true
+        steps:
+        - task: UseDotNet@2
+          displayName: 'Install .NET SDK'
+          inputs:
+            packageType: 'sdk'
+            version: '9.x'
+            includePreviewVersions: true
+            installationPath: $(Agent.ToolsDirectory)/dotnet
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
+
+        - task: NuGetToolInstaller@1
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: NuGetAuthenticate@1
+          inputs:
+            forceReinstallCredentialProvider: true            
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
+          displayName: 'Setup BuildNumber'  
+          inputs:
+            system: 'RevisionCounter'
+            major: '0'
+            minor: '1'
+            exclude_commit: true
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: PowerShell@2
+          displayName: 'Configure NuGet SSL Settings'
+          inputs:
+            targetType: 'inline'
+            script: |
+              # Set environment variables for SSL handling
+              [Environment]::SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER", "0", "Machine")
+              [Environment]::SetEnvironmentVariable("NUGET_CERT_REVOCATION_MODE", "offline", "Machine")
+              [Environment]::SetEnvironmentVariable("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true", "Machine")
+              
+              # Configure NuGet sources
+              nuget sources clear
+              nuget sources add -name "nuget.org" -source "https://api.nuget.org/v3/index.json"
+              
+              # List sources to verify
+              nuget sources list
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - checkout: self
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: MSBuild@1
+          displayName: 'Restore and Build DLL Project'
+          inputs:
+            solution: '$(DllFilePath)'
+            configuration: '$(BuildConfiguration)'
+            platform: $(BuildPlatform)
+            restoreNugetPackages: true            
+            #verbosity: 'Detailed'
+          env:
+            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+            NUGET_CERT_REVOCATION_MODE: offline
+            ob_restore_phase: true
+
+        - task: MSBuild@1
+          displayName: 'Restore and Build EXE Project'
+          inputs:
+            solution: '$(ExeFilePath)'
+            configuration: '$(BuildConfiguration)'
+            platform: $(BuildPlatform)
+            restoreNugetPackages: true
+            #verbosity: 'Detailed'
+          env:
+            DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
+            NUGET_CERT_REVOCATION_MODE: offline
+            ob_restore_phase: true
+        
+        - task: CopyFiles@2
+          displayName: 'Copy DLL binaries to output directory'
+          inputs:
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
+            Contents: '**/*.dll'              
+            TargetFolder: '$(BuildOutput)'
+            flattenFolders: true
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: CopyFiles@2
+          displayName: 'Copy EXE binaries to output directory'
+          inputs:
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildConfiguration)\net472'
+            Contents: '**/*.exe'            
+            TargetFolder: '$(BuildOutput)'
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: onebranch.pipeline.signing@1 
+          displayName: 'Sign Binaries'
+          inputs:
+            command: 'sign'
+            signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
+            files_to_sign: '*.exe;*.dll'
+            search_root: '$(BuildOutput)'
+          condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
+
+        - task: CopyFiles@2
+          displayName: 'Copy signed DLLs back to build directory'
+          inputs:
+            SourceFolder: '$(BuildOutput)'
+            Contents: '*.dll'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
+            OverWrite: true
+
+        - task: MSBuild@1
+          displayName: 'Create NuGet Package with signed binaries'
+          inputs:
+            solution: '$(DllFilePath)'
+            configuration: '$(BuildConfiguration)'
+            platform: $(BuildPlatform)
+            msbuildArguments: '/t:Pack /p:NoBuild=true /p:IncludeBuildOutput=true'
+
+        - task: CopyFiles@2
+          displayName: 'Copy nupkg to package output directory'
+          inputs:
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)'
+            Contents: '*.nupkg'
+            TargetFolder: '$(PackageOutput)'
+
+        - task: onebranch.pipeline.signing@1 
+          displayName: 'Sign NuGet packages'
+          inputs:
+            command: 'sign'
+            signing_profile: 'CP-401405'
+            files_to_sign: '*.nupkg'
+            search_root: '$(PackageOutput)'
+          condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
+  
