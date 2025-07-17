@@ -176,12 +176,12 @@ extends:
                 Write-Host "BuildOutput directory does not exist!"
               }
 
-        - task: onebranch.pipeline.signing@1
+        - task: onebranch.pipeline.signing@1 
           displayName: 'Sign Binaries'
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '**/*.exe;**/*.dll'
+            files_to_sign: '**/*.exe'
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
         
