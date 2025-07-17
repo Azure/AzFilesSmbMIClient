@@ -161,7 +161,7 @@ extends:
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '**/*.exe,**/*.dll'
+            files_to_sign: '**/*.dll'
             search_root: '$(BuildOutput)'
         
         - task: NuGetCommand@2
