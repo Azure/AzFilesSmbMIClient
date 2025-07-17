@@ -77,7 +77,7 @@ extends:
           ${{ if eq('true', 'true') }}:
             ob_nugetPublishing_enabled: true
         steps:
-        - checkout: self
+        #- checkout: self
 
         - task: UseDotNet@2
           displayName: 'Install .NET SDK'
