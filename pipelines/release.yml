@@ -156,13 +156,34 @@ extends:
             Contents: '**/*.exe'            
             TargetFolder: '$(BuildOutput)'
 
+        - task: PowerShell@2
+          displayName: 'List files for signing verification'
+          inputs:
+            targetType: 'inline'
+            script: |
+              Write-Host "BuildOutput directory: $(BuildOutput)"
+              if (Test-Path "$(BuildOutput)") {
+                Write-Host "Files in BuildOutput:"
+                Get-ChildItem -Path "$(BuildOutput)" -Recurse -File | ForEach-Object { 
+                  Write-Host "  $($_.FullName)"
+                }
+                
+                Write-Host "Executable and DLL files:"
+                Get-ChildItem -Path "$(BuildOutput)" -Recurse -Include "*.dll","*.exe" | ForEach-Object { 
+                  Write-Host "  $($_.FullName)"
+                }
+              } else {
+                Write-Host "BuildOutput directory does not exist!"
+              }
+
         - task: onebranch.pipeline.signing@1
-          displayName: 'Sign NuGet Package Binaries'
+          displayName: 'Sign Binaries'
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '**/*.dll'
+            files_to_sign: '**/*.exe;**/*.dll'
             search_root: '$(BuildOutput)'
+          condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
         
         - task: NuGetCommand@2
           inputs:
