@@ -46,8 +46,8 @@ extends:
     cloudvault: # https://aka.ms/obpipelines/cloudvault
       enabled: false
     globalSdl: # https://aka.ms/obpipelines/sdl
-      # tsa:
-      #  enabled: false # onebranch publish all sdl results to TSA. If TSA is disabled all SDL tools will forced into 'break' build mode.
+      tsa:
+        enabled: false # onebranch publish all sdl results to TSA. If TSA is disabled all SDL tools will forced into 'break' build mode.
       # credscan:
       #   suppressionsFile: $(Build.SourcesDirectory)\.config\CredScanSuppressions.json
       policheck:
