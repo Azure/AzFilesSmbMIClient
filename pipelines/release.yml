@@ -141,9 +141,16 @@ extends:
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
             NUGET_CERT_REVOCATION_MODE: offline
+        
+        - task: CopyFiles@2
+          displayName: 'Copy DLL binaries to output directory'
+          inputs:
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
+            Contents: '**/*.dll'        
+            TargetFolder: '$(BuildOutput)'
 
         - task: CopyFiles@2
-          displayName: 'Copy binaries to output directory'
+          displayName: 'Copy EXE binaries to output directory'
           inputs:
             SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildConfiguration)\net472'
             Contents: '**/*.exe'            

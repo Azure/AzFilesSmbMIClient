@@ -10,5 +10,12 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
-  
+
+  <!--
+  Copy the built native DLL to the output directory after build so that it is available alongside the managed assembly for packaging and testing.
+  -->
+  <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
+    <Copy SourceFiles="$(ProjectDir)\..\..\dll\src\$(Configuration)\AzFilesSmbMI.dll" DestinationFolder="$(OutDir)" />
+  </Target>
+    
 </Project>
