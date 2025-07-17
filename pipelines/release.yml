@@ -77,8 +77,6 @@ extends:
           ${{ if eq('true', 'true') }}:
             ob_nugetPublishing_enabled: true
         steps:
-        #- checkout: self
-
         - task: UseDotNet@2
           displayName: 'Install .NET SDK'
           inputs:
@@ -86,12 +84,21 @@ extends:
             version: '9.x'
             includePreviewVersions: true
             installationPath: $(Agent.ToolsDirectory)/dotnet
-        
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
+
         - task: NuGetToolInstaller@1
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
 
         - task: NuGetAuthenticate@1
           inputs:
             forceReinstallCredentialProvider: true            
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
 
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
           displayName: 'Setup BuildNumber'  
@@ -100,6 +107,9 @@ extends:
             major: '1'
             minor: '0'
             exclude_commit: true
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
 
         - task: PowerShell@2
           displayName: 'Configure NuGet SSL Settings'
@@ -116,7 +126,12 @@ extends:
               nuget sources add -name "nuget.org" -source "https://api.nuget.org/v3/index.json"
               
               # List sources to verify
-              nuget sources list              
+              nuget sources list
+
+        - checkout: self
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
 
         - task: MSBuild@1
           displayName: 'Restore and Build DLL Project'
@@ -129,6 +144,7 @@ extends:
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
             NUGET_CERT_REVOCATION_MODE: offline
+            ob_restore_phase: true
 
         - task: MSBuild@1
           displayName: 'Restore and Build EXE Project'
@@ -141,6 +157,7 @@ extends:
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
             NUGET_CERT_REVOCATION_MODE: offline
+            ob_restore_phase: true
         
         - task: CopyFiles@2
           displayName: 'Copy DLL binaries to output directory'
@@ -148,6 +165,10 @@ extends:
             SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
             Contents: '**/*.dll'        
             TargetFolder: '$(BuildOutput)'
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
+          
 
         - task: CopyFiles@2
           displayName: 'Copy EXE binaries to output directory'
@@ -155,6 +176,9 @@ extends:
             SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildConfiguration)\net472'
             Contents: '**/*.exe'            
             TargetFolder: '$(BuildOutput)'
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
 
         - task: PowerShell@2
           displayName: 'List files for signing verification'
@@ -175,6 +199,9 @@ extends:
               } else {
                 Write-Host "BuildOutput directory does not exist!"
               }
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            ob_restore_phase: true
 
         - task: onebranch.pipeline.signing@1 
           displayName: 'Sign Binaries'
