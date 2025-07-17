@@ -173,8 +173,8 @@ extends:
           inputs:
             SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)'
             Contents: |
-              'net472\**\*.dll'
-              '**\*.nupkg'        
+              net472\**\*.dll
+              **\*.nupkg
             TargetFolder: '$(BuildOutput)'
             flattenFolders: true
           env:
