@@ -198,8 +198,18 @@ extends:
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '**/*.exe;**/*.dll;**/*.nupkg'
+            files_to_sign: '**/*.exe;**/*.dll'
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
+
+        - task: onebranch.pipeline.signing@1 
+          displayName: 'Sign NuGet packages'
+          inputs:
+            command: 'sign'
+            signing_profile: 'CP-401405'
+            files_to_sign: '*.nupkg'
+            search_root: '$(BuildOutput)'
+          condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
+          
         
         
