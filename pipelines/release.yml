@@ -91,6 +91,7 @@ extends:
         - task: NuGetToolInstaller@1
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
 
         - task: NuGetAuthenticate@1
@@ -98,6 +99,7 @@ extends:
             forceReinstallCredentialProvider: true            
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
 
         - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
@@ -109,6 +111,7 @@ extends:
             exclude_commit: true
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
 
         - task: PowerShell@2
@@ -127,10 +130,15 @@ extends:
               
               # List sources to verify
               nuget sources list
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
 
         - checkout: self
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
 
         - task: MSBuild@1
@@ -167,6 +175,7 @@ extends:
             TargetFolder: '$(BuildOutput)'
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
           
 
@@ -178,29 +187,7 @@ extends:
             TargetFolder: '$(BuildOutput)'
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
-            ob_restore_phase: true
-
-        - task: PowerShell@2
-          displayName: 'List files for signing verification'
-          inputs:
-            targetType: 'inline'
-            script: |
-              Write-Host "BuildOutput directory: $(BuildOutput)"
-              if (Test-Path "$(BuildOutput)") {
-                Write-Host "Files in BuildOutput:"
-                Get-ChildItem -Path "$(BuildOutput)" -Recurse -File | ForEach-Object { 
-                  Write-Host "  $($_.FullName)"
-                }
-                
-                Write-Host "Executable and DLL files:"
-                Get-ChildItem -Path "$(BuildOutput)" -Recurse -Include "*.dll","*.exe" | ForEach-Object { 
-                  Write-Host "  $($_.FullName)"
-                }
-              } else {
-                Write-Host "BuildOutput directory does not exist!"
-              }
-          env:
-            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
 
         - task: onebranch.pipeline.signing@1 
@@ -208,13 +195,19 @@ extends:
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '**/*.exe'
+            files_to_sign: '**/*.exe;**/*.dll'
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
         
-        - task: NuGetCommand@2
+        - task: DotNetCoreCLI@2
+          displayName: 'Nuget Pack'
           inputs:
             command: 'pack'
             packagesToPack: '$(DllFilePath)'
-            packDestination: '$(PackageOutput)'
+            packDirectory: '$(PackageOutput)'
+            nobuild: true
+            buildProperties: 'GeneratePackageOnBuild=true;BuildProjectReferences=false'
+            versioningScheme: 'byEnvVar'
+            versionEnvVar: 'CDP_FILE_VERSION_NUMERIC_NOLEADINGZEROS'
+            verbosityPack: 'Normal'
         
