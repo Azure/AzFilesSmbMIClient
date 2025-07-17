@@ -148,7 +148,7 @@ extends:
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
             restoreNugetPackages: true
-            msbuildArguments:'-t:Pack -p:PackageVersion=1.2.3'
+            msbuildArguments: '/t:Pack'
             verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
@@ -162,7 +162,7 @@ extends:
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
             restoreNugetPackages: true
-            verbosity: 'Detailed'
+            #verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
             NUGET_CERT_REVOCATION_MODE: offline
