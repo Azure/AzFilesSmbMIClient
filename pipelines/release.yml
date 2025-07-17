@@ -148,6 +148,7 @@ extends:
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
             restoreNugetPackages: true
+            msbuildArguments:'-t:Pack -p:PackageVersion=1.2.3'
             verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
@@ -170,14 +171,14 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy DLL binaries to output directory'
           inputs:
-            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
-            Contents: '**/*.dll'        
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)'
+            Contents: '**/*.dll;**/*.nupkg'        
             TargetFolder: '$(BuildOutput)'
+            flattenFolders: true
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
             # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
-          
 
         - task: CopyFiles@2
           displayName: 'Copy EXE binaries to output directory'
@@ -195,19 +196,8 @@ extends:
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '**/*.exe;**/*.dll'
+            files_to_sign: '**/*.exe;**/*.dll;**/*.nupkg'
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
         
-        - task: DotNetCoreCLI@2
-          displayName: 'Nuget Pack'
-          inputs:
-            command: 'pack'
-            packagesToPack: '$(DllFilePath)'
-            packDirectory: '$(PackageOutput)'
-            nobuild: true
-            buildProperties: 'GeneratePackageOnBuild=true;BuildProjectReferences=false'
-            versioningScheme: 'byEnvVar'
-            versionEnvVar: 'CDP_FILE_VERSION_NUMERIC_NOLEADINGZEROS'
-            verbosityPack: 'Normal'
         
