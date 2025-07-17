@@ -172,7 +172,9 @@ extends:
           displayName: 'Copy DLL binaries to output directory'
           inputs:
             SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)'
-            Contents: '**\*.dll;**\*.nupkg'        
+            Contents: |
+              'net472\**\*.dll'
+              '**\*.nupkg'        
             TargetFolder: '$(BuildOutput)'
             flattenFolders: true
           env:
