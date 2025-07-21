@@ -107,7 +107,7 @@ extends:
           inputs:
             system: 'RevisionCounter'
             major: '0'
-            minor: '1'
+            minor: '2'
             exclude_commit: true
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
