@@ -199,6 +199,14 @@ extends:
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
 
+        - task: PublishBuildArtifacts@1
+          displayName: 'Publish signed binaries to GitHub'
+          inputs:
+            PathtoPublish: '$(BuildOutput)'
+            ArtifactName: 'SignedBinaries'
+            publishLocation: 'Container'
+          condition: succeeded()
+
         - task: CopyFiles@2
           displayName: 'Copy signed DLLs back to build directory'
           inputs:
