@@ -202,7 +202,7 @@ extends:
         - task: GitHubRelease@1
           displayName: 'Publish signed binaries to GitHub Release'
           inputs:
-            gitHubConnection: 'github.com_AzFilesSmbMIClient' # Service connection name
+            gitHubConnection: 'github.com_AzFilesSmbMIClient' # Service connection name https://dev.azure.com/msazure/One/_settings/adminservices?resourceId=c9e79771-fd89-49cd-bf15-fea8b7c43876
             repositoryName: '$(Build.Repository.Name)'
             action: 'create'
             target: '$(Build.SourceVersion)'
