@@ -1335,7 +1335,7 @@ HRESULT SmbSetCredentialInternal(
 
         BOOL bGetTokenFromImds = ((pwszOauthToken == nullptr) || (pwszOauthToken[0] == L'\0'));
         LOG(Logger::INFO, L"Authenticating access to '%ls' %ls", wstrAccountFileUri.c_str(),
-            bGetTokenFromImds ? (pwszClientID && pwszClientID[0] != L'\0' ?
+            bGetTokenFromImds ? (pwszClientID && (pwszClientID[0] != L'\0') ?
                 L"by fetching OAuth token from IMDS endpoint using user-managed identity" :
                 L"by fetching OAuth token from IMDS endpoint using system-managed identity") :
             L"using provided OAuth token");
@@ -1345,6 +1345,9 @@ HRESULT SmbSetCredentialInternal(
 
         if (bGetTokenFromImds)
         {
+            // Get token for resource=https://storage.azure.com.  Note that there is NO trailing '/'.
+            // OK     --> resource=https://storage.azure.com
+            // NOT OK --> resource=https://storage.azure.com/
             // Build the IMDS request URL with optional client ID
             std::wstring imdsUrl = L"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://storage.azure.com";
 
