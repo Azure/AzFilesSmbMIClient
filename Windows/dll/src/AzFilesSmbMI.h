@@ -31,7 +31,7 @@ extern "C" AZFILESSMBMI_API HRESULT SmbSetCredential(
 
 extern "C" AZFILESSMBMI_API HRESULT SmbRefreshCredential(
     _In_ PCWSTR pwszFileEndpointUri,
-    _In_opt_  PCWSTR pwszClientID
+    _In_ PCWSTR pwszClientID
     );
 
 extern "C" AZFILESSMBMI_API HRESULT SmbClearCredential(

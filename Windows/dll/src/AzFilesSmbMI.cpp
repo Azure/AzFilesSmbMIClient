@@ -1466,7 +1466,7 @@ VOID CALLBACK SmbRefreshTimerCallback(
 
 HRESULT SmbRefreshCredentialInternal(
     _In_      PCWSTR pwszFileEndpointUri,
-    _In_opt_  PCWSTR pwszClientID
+    _In_      PCWSTR pwszClientID
     )
 {
     // Initialize logger first
