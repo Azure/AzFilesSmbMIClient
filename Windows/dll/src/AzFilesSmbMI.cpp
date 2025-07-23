@@ -1487,6 +1487,12 @@ HRESULT SmbRefreshCredentialInternal(
         auto ctx = std::make_shared<RefreshContext>(pwszFileEndpointUri, pwszClientID);
 
         ctx->shEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        if (!ctx->shEvent) {
+            DWORD dwError = GetLastError();
+            hrError = HRESULT_FROM_WIN32(dwError);
+            LOG(Logger::ERR, L"CreateEvent failed with error %d", dwError);
+            throw hrError;
+        }
 
         ctx->timer = CreateThreadpoolTimer(SmbRefreshTimerCallback, ctx.get(), nullptr);
         if (!ctx->timer) {
