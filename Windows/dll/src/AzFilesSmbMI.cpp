@@ -1486,6 +1486,8 @@ HRESULT SmbRefreshCredentialInternal(
 
         auto ctx = std::make_shared<RefreshContext>(pwszFileEndpointUri, pwszClientID);
 
+        ctx->shEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+
         ctx->timer = CreateThreadpoolTimer(SmbRefreshTimerCallback, ctx.get(), nullptr);
         if (!ctx->timer) {
             DWORD gle = ::GetLastError();
