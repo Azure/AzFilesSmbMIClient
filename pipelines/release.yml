@@ -171,7 +171,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy DLL binaries to output directory'
           inputs:
-            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\$(BuildPlatform)\net472'
             Contents: '**/*.dll'              
             TargetFolder: '$(BuildOutput)'
             flattenFolders: true
@@ -183,7 +183,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy EXE binaries to output directory'
           inputs:
-            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildConfiguration)\net472'
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildConfiguration)\$(BuildPlatform)\net472'
             Contents: '**/*.exe'            
             TargetFolder: '$(BuildOutput)'
           env:
