@@ -13,23 +13,25 @@ namespace Microsoft.Azure.Files
 
     public class AzFilesSmbMI
     {
-        [DllImport("AzFilesSmbMI.DLL", SetLastError = false,
+        [DllImport("AzFilesSmbMI.dll", SetLastError = false,
                 CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         public static extern int SmbSetCredential(
                         string FileEndpointUri,
                         string OAuthToken,
-                        string clientId,
+                        string ClientId,
                         [MarshalAs(UnmanagedType.U8)] out ulong ExpiryInSeconds);
 
-        [DllImport("AzFilesSmbMI.DLL", SetLastError = false,
+        [DllImport("AzFilesSmbMI.dll", SetLastError = false,
             CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         public static extern int SmbRefreshCredential(
                     string FileEndpointUri,
-                    string clientId,
-                    [MarshalAs(UnmanagedType.U8)] out ulong ExpiryInSeconds);
+                    string ClientId);
 
-        [DllImport("AzFilesSmbMI.DLL", SetLastError = false,
+        [DllImport("AzFilesSmbMI.dll", SetLastError = false,
             CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         public static extern int SmbClearCredential(
                     string FileEndpointUri);
     }

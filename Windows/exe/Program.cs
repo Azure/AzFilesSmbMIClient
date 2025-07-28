@@ -17,18 +17,20 @@ namespace AzFilesSmbMIClient
     {
         static public void ShowUsage()
         {
-            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set       <uri>");
-            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe refresh   <uri>");
-            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set       <uri> <token>");
-            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set       <uri> <token> <clientId>");
-            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe refresh   <uri> <clientId>");
-            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe clear     <uri>");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe <mandatoryParam>    <mandatoryParam>    [optionalParam]");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set                 <uri>");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe refresh             <uri>");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set                 <uri>               [token]");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe set                 <uri>               [token] [clientId]  NOTE: If passing clientId, you must pass the 'token' parameter. This could be an empty string");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe refresh             <uri>               [clientId] [expireTimeSeconds]  NOTE: If passing expireTimeSeconds, you must pass the 'clientId' parameter. This could be an empty string");
+            Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")} Usage: AzFilesSmbMIClient.exe clear               <uri>");
         }
 
-        public static class AzureFilesSmbAuthErrorCode
+        public static class AzFilesSmbMIClientErrorCode
         {
             public const int S_OK = 0;
             public const int S_FALSE = 1;
+            public const int E_INVALIDARG = -2147024809; // 0x80070057
             public static bool Succeeded(int hr)
             {
                 return (hr >= S_OK);
@@ -51,27 +53,38 @@ namespace AzFilesSmbMIClient
             string uri = args[1];
             string token = args.Length < 3 ? "" : args[2];
             string clientId = args.Length < 4 ? "" : args[3];
+            string refreshExpiryInSeconds = args.Length < 5 ? "86400" : args[4]; // default to 24 hours if not specified
 
-            int hResult = AzureFilesSmbAuthErrorCode.S_FALSE;
+            int hResult = AzFilesSmbMIClientErrorCode.S_FALSE;
 
             if (verb.Equals("SET"))
             {
-                if (token.Length > 0)
+                if (token.Length == 0)
                 {
-                    hResult = AzFilesSmbMI.SmbSetCredential(uri, token, clientId, out ulong expiryInSeconds);
+                    Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] Token will be obtained via IMDS endpoint.");
                 }
-                else
+
+                hResult = AzFilesSmbMI.SmbSetCredential(uri, token, clientId, out ulong expiryInSeconds);
+
+                if (AzFilesSmbMIClientErrorCode.Succeeded(hResult))
                 {
-                    hResult = AzFilesSmbMI.SmbRefreshCredential(uri, clientId, out ulong expiryInSeconds);
+                    Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] {verb} SUCCEEDED for {uri}.  Access is valid for {expiryInSeconds} seconds from now.");
                 }
             }
             else if (verb.Equals("REFRESH"))
             {
-                if(token.Length > 0)
+                if (token.Length > 0)
                 {
                     Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] Refresh only supported with managed identities.");
                     ShowUsage();
                     return -1;
+                }
+
+                if (!int.TryParse(refreshExpiryInSeconds, out int expireTimeSeconds))
+                {
+                    Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] Please provide a valid duration for how long to keep refreshing.");
+                    ShowUsage();
+                    return AzFilesSmbMIClientErrorCode.E_INVALIDARG;
                 }
 
                 ManualResetEvent resetEvent = new ManualResetEvent(false);
@@ -80,15 +93,15 @@ namespace AzFilesSmbMIClient
                 {
                     while (true)
                     {
-                        hResult = AzFilesSmbMI.SmbRefreshCredential(uri, clientId, out ulong expiryInSeconds);
+                        hResult = AzFilesSmbMI.SmbRefreshCredential(uri, clientId);
 
-                        if(AzureFilesSmbAuthErrorCode.Failed(hResult))
+                        if(AzFilesSmbMIClientErrorCode.Failed(hResult))
                         {
                             Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] SmbRefreshCredential failed: {hResult}");
                             break;
                         }
 
-                        var nextRefreshInSeconds = expiryInSeconds - 300; // next refresh when current token has 5mins of validity remaining.
+                        var nextRefreshInSeconds = expireTimeSeconds - 300; // next refresh when current token has 5mins of validity remaining.
                         Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] Next refresh in {nextRefreshInSeconds} seconds.");
 
                         Thread.Sleep(TimeSpan.FromSeconds(nextRefreshInSeconds));
@@ -115,7 +128,7 @@ namespace AzFilesSmbMIClient
                 ShowUsage();
             }
 
-            if(AzureFilesSmbAuthErrorCode.Failed(hResult))
+            if(AzFilesSmbMIClientErrorCode.Failed(hResult))
             {
                 Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] {verb} creds for '{uri}' failed: {hResult}");
             }

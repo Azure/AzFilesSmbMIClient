@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +17,25 @@
   Copy the built native DLL to the output directory after build so that it is available alongside the managed assembly for packaging and testing.
   -->
   <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
-    <Copy SourceFiles="$(ProjectDir)\..\dll\src\$(Configuration)\AzFilesSmbMI.dll" DestinationFolder="$(OutDir)" />
+    <PropertyGroup>
+      <!-- Map .NET platform to VC++ platform -->
+      <VCPlatform Condition="'$(Platform)' == 'x64'">x64</VCPlatform>
+      <VCPlatform Condition="'$(Platform)' == 'x86' or '$(Platform)' == 'AnyCPU'">Win32</VCPlatform>
+      <VCPlatform Condition="'$(VCPlatform)' == ''">x64</VCPlatform>
+      
+      <!-- Build the correct path for the native DLL -->
+      <NativeDllPath>$(ProjectDir)\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.dll</NativeDllPath>
+    </PropertyGroup>
+    
+    <Message Text="Looking for native DLL at: $(NativeDllPath)" Importance="high" />
+    <Message Text="Target platform: $(Platform), VC++ platform: $(VCPlatform)" Importance="high" />
+    
+    <Copy SourceFiles="$(NativeDllPath)" 
+          DestinationFolder="$(OutDir)" 
+          Condition="Exists('$(NativeDllPath)')" />
+          
+    <Warning Text="Native DLL not found at $(NativeDllPath)" 
+             Condition="!Exists('$(NativeDllPath)')" />
   </Target>
 
 </Project>
