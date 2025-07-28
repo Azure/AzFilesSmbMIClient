@@ -226,7 +226,7 @@ extends:
           inputs:
             SourceFolder: '$(BuildOutput)'
             Contents: '*.dll'
-            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)\net472'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
 
         - task: MSBuild@1
@@ -240,7 +240,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy nupkg to package output directory'
           inputs:
-            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildConfiguration)'
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)'
             Contents: '*.nupkg'
             TargetFolder: '$(PackageOutput)'
 

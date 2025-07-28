@@ -24,7 +24,7 @@
       <VCPlatform Condition="'$(VCPlatform)' == ''">x64</VCPlatform>
       
       <!-- Build the correct path for the native DLL -->
-      <NativeDllPath>$(ProjectDir)\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.dll</NativeDllPath>
+      <NativeDllPath>$(ProjectDir)\..\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.dll</NativeDllPath>
     </PropertyGroup>
     
     <Message Text="Looking for native DLL at: $(NativeDllPath)" Importance="high" />
