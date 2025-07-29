@@ -6,7 +6,9 @@
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
-  
+  <PropertyGroup>
+    <Version>$(Version)</Version>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\dll\src\AzFilesSmbMI.vcxproj">
       <Private>True</Private>
