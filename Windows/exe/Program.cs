@@ -10,6 +10,7 @@
 namespace AzFilesSmbMIClient
 {
     using System;
+    using System.Text;
     using System.Threading;
     using Microsoft.Azure.Files;
 
@@ -51,18 +52,30 @@ namespace AzFilesSmbMIClient
 
             string verb = args[0].ToUpper();
             string uri = args[1];
-            string token = args.Length < 3 ? "" : args[2];
-            string clientId = args.Length < 4 ? "" : args[3];
+            string token = args.Length < 3 || !string.IsNullOrWhiteSpace(args[3]) ? "" : args[2];
+            string clientId = args.Length < 4 || !string.IsNullOrWhiteSpace(args[3]) ? "" : args[3];
             string refreshExpiryInSeconds = args.Length < 5 ? "86400" : args[4]; // default to 24 hours if not specified
 
             int hResult = AzFilesSmbMIClientErrorCode.S_FALSE;
 
             if (verb.Equals("SET"))
             {
+                StringBuilder loggingMessage = new StringBuilder($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] ");
                 if (token.Length == 0)
                 {
-                    Console.WriteLine($"{DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:fff")}: [TID:{Thread.CurrentThread.ManagedThreadId}] Token will be obtained via IMDS endpoint.");
+                    loggingMessage.Append("Token will be obtained via IMDS endpoint. ");
                 }
+                else
+                {
+                    loggingMessage.Append($"Using OAuth Token: '{token}' ");
+                }
+
+                if (clientId.Length > 0)
+                {
+                    loggingMessage.Append($"Using User Identity ClientId: '{clientId}'");
+                }
+
+                Console.WriteLine(loggingMessage.ToString());
 
                 hResult = AzFilesSmbMI.SmbSetCredential(uri, token, clientId, out ulong expiryInSeconds);
 
