@@ -38,14 +38,6 @@ namespace AzFilesSmbMIClient
             TraceMessage($"  AzFilesSmbMIClient.exe refresh --uri https://myaccount.file.core.windows.net/ --clientId myclient --expiry 3600");
             TraceMessage($"  AzFilesSmbMIClient.exe clear --uri https://myaccount.file.core.windows.net/");
             TraceMessage($"");
-            TraceMessage($"Legacy format (still supported):");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe <mandatoryParam>    <mandatoryParam>    [optionalParam]");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe set                 <uri>");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe refresh             <uri>");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe set                 <uri>               [token]");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe set                 <uri>               [token] [clientId]  NOTE: If passing clientId, you must pass the 'token' parameter. This should be whitespace string");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe refresh             <uri>               [clientId] [expireTimeSeconds]  NOTE: If passing expireTimeSeconds, you must pass the 'clientId' parameter. This should be whitespace string");
-            TraceMessage($"Usage: AzFilesSmbMIClient.exe clear               <uri>");
         }
 
         public static class AzFilesSmbMIClientErrorCode
@@ -86,7 +78,8 @@ namespace AzFilesSmbMIClient
             else
             {
                 // Map legacy positional parameters to named parameters
-                parameters = MapLegacyParameters(args);
+                ShowUsage();
+                return -1;
             }
 
             // Validate required parameters
@@ -208,54 +201,6 @@ namespace AzFilesSmbMIClient
                     {
                         // Parameter without value, treat as flag
                         parameters[paramName] = "true";
-                    }
-                }
-            }
-
-            return parameters;
-        }
-
-        /// <summary>
-        /// Maps legacy positional parameters to named parameters
-        /// </summary>
-        private static Dictionary<string, string> MapLegacyParameters(string[] args)
-        {
-            var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            string verb = args[0].ToUpper();
-
-            string uri = args[1];
-            string token = (args.Length >= 3 && !string.IsNullOrWhiteSpace(args[2])) ? args[2] : "";
-            string clientId = (args.Length >= 4 && !string.IsNullOrWhiteSpace(args[3])) ? args[3] : "";
-            string refreshExpiryInSeconds = args.Length >= 5 ? args[4] : "86400";
-
-            // Map positional parameters based on command
-            if (args.Length >= 2)
-            {
-                parameters["uri"] = args[1];
-
-                if (verb.Equals("SET"))
-                {
-                    if (args.Length >= 3)
-                    {
-                        parameters["token"] = !string.IsNullOrWhiteSpace(args[2]) ? args[2] : "";
-
-                        if (args.Length >= 4)
-                        {
-                            parameters["clientId"] = !string.IsNullOrWhiteSpace(args[3]) ? args[3] : "";
-                        }
-                    }
-                }
-                else if (verb.Equals("REFRESH"))
-                {
-                    if (args.Length >= 3)
-                    {
-                        parameters["clientId"] = !string.IsNullOrWhiteSpace(args[2]) ? args[2] : "";
-
-                        if (args.Length >= 4)
-                        {
-                            parameters["expiry"] = !string.IsNullOrWhiteSpace(args[3]) ? args[3] : "";
-                        }
                     }
                 }
             }
