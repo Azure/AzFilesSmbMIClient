@@ -71,20 +71,13 @@ extends:
           # https://aka.ms/obpipelines/sdl
           ob_sdl_binskim_break: false # always break the build on binskim issues, even if TSA enabled. You can disable it by setting to 'false'
           ob_sdl_roslyn_break: false
-<<<<<<< Updated upstream
-          #${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
-          ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
-          # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
-          ${{ if eq(variables['BuildConfiguration'], 'Release') }}:
-            ob_nugetPublishing_enabled: true
-=======
           # ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
           ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
           # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
           # We only want to publish NuGet packages when building Release from main branch
           #${{ if and(eq(variables['BuildConfiguration'], 'Release'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
           ob_nugetPublishing_enabled: true
->>>>>>> Stashed changes
+
         steps:
         - task: UseDotNet@2
           displayName: 'Install .NET SDK'
