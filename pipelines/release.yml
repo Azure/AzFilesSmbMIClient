@@ -149,7 +149,8 @@ extends:
             solution: '$(DllFilePath)'
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
-            restoreNugetPackages: true            
+            restoreNugetPackages: true 
+            msbuildArguments: '/p:Version=$(Build.BuildNumber)'           
             #verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
@@ -163,6 +164,7 @@ extends:
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
             restoreNugetPackages: true
+            msbuildArguments: '/p:Version=$(Build.BuildNumber)'
             #verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
@@ -236,7 +238,7 @@ extends:
             solution: '$(DllFilePath)'
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
-            msbuildArguments: '/t:Pack /p:NoBuild=true /p:IncludeBuildOutput=true'
+            msbuildArguments: '/t:Pack /p:NoBuild=true /p:IncludeBuildOutput=true /p:Version=$(Build.BuildNumber)'
 
         - task: CopyFiles@2
           displayName: 'Copy nupkg to package output directory'
