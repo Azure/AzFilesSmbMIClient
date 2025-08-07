@@ -77,7 +77,6 @@ namespace AzFilesSmbMIClient
             }
             else
             {
-                // Map legacy positional parameters to named parameters
                 ShowUsage();
                 return -1;
             }
@@ -129,7 +128,7 @@ namespace AzFilesSmbMIClient
             {
                 if (token.Length > 0)
                 {
-                    TraceMessage($"Refresh only supported with managed identities.");
+                    TraceMessage($"Refresh only supported with machine identities.");
                     ShowUsage();
                     return -1;
                 }
