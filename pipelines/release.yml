@@ -71,12 +71,14 @@ extends:
           # https://aka.ms/obpipelines/sdl
           ob_sdl_binskim_break: false # always break the build on binskim issues, even if TSA enabled. You can disable it by setting to 'false'
           ob_sdl_roslyn_break: false
-          ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
+
+          # ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
           ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
           # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
           # We only want to publish NuGet packages when building Release from main branch
-          ${{ if and(eq(variables['BuildConfiguration'], 'Release'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
-            ob_nugetPublishing_enabled: true
+          #${{ if and(eq(variables['BuildConfiguration'], 'Release'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+          ob_nugetPublishing_enabled: true
+
         steps:
         - task: UseDotNet@2
           displayName: 'Install .NET SDK'
@@ -108,7 +110,7 @@ extends:
           inputs:
             system: 'RevisionCounter'
             major: '1'
-            minor: '1'
+            minor: '2'
             exclude_commit: true
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
@@ -157,7 +159,8 @@ extends:
             solution: '$(DllFilePath)'
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
-            restoreNugetPackages: true            
+            restoreNugetPackages: true 
+            msbuildArguments: '/p:Version=$(Build.BuildNumber)'           
             #verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
@@ -171,6 +174,7 @@ extends:
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
             restoreNugetPackages: true
+            msbuildArguments: '/p:Version=$(Build.BuildNumber)'
             #verbosity: 'Detailed'
           env:
             DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER: 0
@@ -244,7 +248,7 @@ extends:
             solution: '$(DllFilePath)'
             configuration: '$(BuildConfiguration)'
             platform: $(BuildPlatform)
-            msbuildArguments: '/t:Pack /p:NoBuild=true /p:IncludeBuildOutput=true'
+            msbuildArguments: '/t:Pack /p:NoBuild=true /p:IncludeBuildOutput=true /p:Version=$(Build.BuildNumber)'
 
         - task: CopyFiles@2
           displayName: 'Copy nupkg to package output directory'
