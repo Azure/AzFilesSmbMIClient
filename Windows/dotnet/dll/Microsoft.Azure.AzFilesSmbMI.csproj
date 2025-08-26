@@ -47,7 +47,13 @@
     <None Include="$(OutDir)AzFilesSmbMI.dll" Condition="Exists('$(OutDir)AzFilesSmbMI.dll')">
       <Pack>true</Pack>
       <PackagePath>lib\net472\AzFilesSmbMI.dll</PackagePath>
-    </None>    
+    </None>   
+
+    <!-- Include .targets file for automatic deployment -->
+    <None Include="Microsoft.Azure.AzFilesSmbMI.targets">
+      <Pack>true</Pack>
+      <PackagePath>lib\net472\Microsoft.Azure.AzFilesSmbMI.targets</PackagePath>
+    </None> 
   </ItemGroup>
 
 </Project>

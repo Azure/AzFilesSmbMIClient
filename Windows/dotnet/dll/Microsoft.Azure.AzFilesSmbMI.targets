@@ -1,0 +1,9 @@
+<Project>
+  <!-- Automatically copy the native DLL to output directory when package is consumed -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'x64' OR '$(PlatformTarget)' == 'x64' OR ('$(Platform)' == '' AND '$(PlatformTarget)' == '')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+</Project>
