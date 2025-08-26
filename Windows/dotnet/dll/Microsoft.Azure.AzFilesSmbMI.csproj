@@ -46,7 +46,7 @@
   <ItemGroup>
     <None Include="$(OutDir)AzFilesSmbMI.dll" Condition="Exists('$(OutDir)AzFilesSmbMI.dll')">
       <Pack>true</Pack>
-      <PackagePath>lib\net472\AzFilesSmbMI.dll</PackagePath>
+      <PackagePath>runtimes/win-x64/native/AzFilesSmbMI.dll</PackagePath>
     </None>   
 
     <!-- Include .targets file for automatic deployment -->
