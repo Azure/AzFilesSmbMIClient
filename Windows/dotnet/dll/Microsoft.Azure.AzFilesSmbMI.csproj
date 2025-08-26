@@ -12,6 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\dll\src\AzFilesSmbMI.vcxproj">
       <Private>True</Private>
+      <IncludeAssets>none</IncludeAssets>
+      <ExcludeAssets>all</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>
 
