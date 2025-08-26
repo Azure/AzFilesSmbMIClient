@@ -44,7 +44,7 @@
   <ItemGroup>
     <None Include="$(OutDir)AzFilesSmbMI.dll" Condition="Exists('$(OutDir)AzFilesSmbMI.dll')">
       <Pack>true</Pack>
-      <PackagePath>AzFilesSmbMI.dll</PackagePath>
+      <PackagePath>lib\net472\AzFilesSmbMI.dll</PackagePath>
     </None>    
   </ItemGroup>
 
