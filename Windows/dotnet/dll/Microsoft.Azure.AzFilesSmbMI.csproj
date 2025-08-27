@@ -11,8 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\dll\src\AzFilesSmbMI.vcxproj">
-      <Private>True</Private>
-      <IncludeAssets>none</IncludeAssets>
+      <Private>True</Private>      
       <ExcludeAssets>all</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>
@@ -52,7 +51,7 @@
     <!-- Include .targets file for automatic deployment -->
     <None Include="Microsoft.Azure.AzFilesSmbMI.targets">
       <Pack>true</Pack>
-      <PackagePath>lib\net472\Microsoft.Azure.AzFilesSmbMI.targets</PackagePath>
+      <PackagePath>build\Microsoft.Azure.AzFilesSmbMI.targets</PackagePath>
     </None> 
   </ItemGroup>
 
