@@ -11,7 +11,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\dll\src\AzFilesSmbMI.vcxproj">
-      <Private>True</Private>
+      <Private>True</Private>      
+      <ExcludeAssets>all</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>
 
@@ -39,5 +40,19 @@
     <Warning Text="Native DLL not found at $(NativeDllPath)" 
              Condition="!Exists('$(NativeDllPath)')" />
   </Target>
-    
+
+  <!-- Include native DLL in NuGet package -->
+  <ItemGroup>
+    <None Include="$(OutDir)AzFilesSmbMI.dll" Condition="Exists('$(OutDir)AzFilesSmbMI.dll')">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-x64/native/AzFilesSmbMI.dll</PackagePath>
+    </None>   
+
+    <!-- Include .targets file for automatic deployment -->
+    <None Include="Microsoft.Azure.AzFilesSmbMI.targets">
+      <Pack>true</Pack>
+      <PackagePath>build\Microsoft.Azure.AzFilesSmbMI.targets</PackagePath>
+    </None> 
+  </ItemGroup>
+
 </Project>
