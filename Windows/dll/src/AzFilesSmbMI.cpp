@@ -30,6 +30,8 @@ Abstract:
 #include <iomanip>
 #include <chrono>
 #include <unordered_map>
+#include <sspi.h>
+#include <security.h>
 #include "Logger.h"
 #include "AzFilesSmbMI.h"
 
@@ -37,6 +39,7 @@ Abstract:
 std::vector<unsigned char> FromBase64(_In_ const std::string& str);
 std::string GetValueFromJson(_In_ const std::string& json, _In_ const std::string& key);
 std::wstring UTF8ToWide(_In_ const std::string& utf8Str);
+HRESULT InsertKerberosTicketSSPI(_In_ const unsigned char* kerberosTicket, _In_ size_t ticketLength);
 HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size_t ticketLength);
 HRESULT DisplayKerbTicket(_In_ PCWSTR pwszTargetName, _In_ bool bPurge);
 std::unique_ptr<wchar_t[]> GetAllResponseHeaders(_In_ HINTERNET hRequest);
@@ -315,12 +318,34 @@ public:
     HANDLE Get() const { return m_handle; }
 
     HRESULT Connect() {
-        NTSTATUS status = ::LsaConnectUntrusted(&m_handle);
+        // Try privileged connection first
+        LSA_STRING processName = {};
+        processName.Buffer = const_cast<LPSTR>("AzFilesSmbMI");
+        processName.Length = static_cast<USHORT>(strlen(processName.Buffer));
+        processName.MaximumLength = processName.Length + 1;
+
+        NTSTATUS status = ::LsaRegisterLogonProcess(&processName, &m_handle, nullptr);
+        if (status == 0) {
+            LOG(Logger::INFO, L"Successfully connected using LsaRegisterLogonProcess (privileged)");
+            return S_OK;
+        }
+
+        HRESULT hr = HRESULT_FROM_WIN32(LsaNtStatusToWinError(status));
+        LOG(Logger::WARN, L"LsaRegisterLogonProcess failed; ntstatus=%d, hr=0x%X. Trying untrusted connection...", status, hr);
+
+        // Fallback to untrusted connection
+        status = ::LsaConnectUntrusted(&m_handle);
         if (status != 0) {
-            HRESULT hr = HRESULT_FROM_WIN32(LsaNtStatusToWinError(status));
+            hr = HRESULT_FROM_WIN32(LsaNtStatusToWinError(status));
             LOG(Logger::ERR, L"LsaConnectUntrusted failed; ntstatus=%d, hr=0x%X", status, hr);
+            
+            // In container environments, LSA might not be available at all
+            // Log this as a container limitation rather than a hard error
+            LOG(Logger::WARN, L"LSA authentication not available in current environment (container/restricted context)");
             return hr;
         }
+
+        LOG(Logger::INFO, L"Successfully connected using LsaConnectUntrusted");
         return S_OK;
     }
 
@@ -334,6 +359,93 @@ public:
     operator HANDLE() const { return m_handle; }
 };
 
+// Alternative implementation using SSPI
+HRESULT InsertKerberosTicketSSPI(_In_ const unsigned char* kerberosTicket, _In_ size_t ticketLength)
+{
+    if (!kerberosTicket || ticketLength == 0) {
+        LOG(Logger::ERR, L"Invalid ticket parameters");
+        return E_INVALIDARG;
+    }
+
+    LOG(Logger::INFO, L"Using SSPI fallback for Kerberos ticket insertion in container environment");
+
+    CredHandle credHandle = {};
+    TimeStamp lifetime;
+    SECURITY_STATUS ss;
+
+    // Use LPWSTR directly instead of SECURITY_STRING
+    ss = AcquireCredentialsHandle(
+        nullptr,                                      // Principal
+        const_cast<LPWSTR>(MICROSOFT_KERBEROS_NAME_W), // Package name as LPWSTR
+        SECPKG_CRED_INBOUND,                         // Credential use
+        nullptr,                                     // LUID
+        nullptr,                                     // Auth data
+        nullptr,                                     // Get key function
+        nullptr,                                     // Get key argument
+        &credHandle,                                 // Credential handle
+        &lifetime                                    // Lifetime
+    );
+
+    if (ss != SEC_E_OK)
+    {
+        HRESULT hr = HRESULT_FROM_WIN32(ss);
+        LOG(Logger::ERR, L"AcquireCredentialsHandle failed, ss=0x%X, hr=0x%X", ss, hr);
+        return hr;
+    }
+
+    // Try to accept the security context with the provided ticket
+    SecBuffer inBuffer = {};
+    inBuffer.BufferType = SECBUFFER_TOKEN;
+    inBuffer.cbBuffer = static_cast<ULONG>(ticketLength);
+    inBuffer.pvBuffer = const_cast<unsigned char*>(kerberosTicket);
+
+    SecBufferDesc inBufferDesc = {};
+    inBufferDesc.ulVersion = SECBUFFER_VERSION;
+    inBufferDesc.cBuffers = 1;
+    inBufferDesc.pBuffers = &inBuffer;
+
+    CtxtHandle contextHandle = {};
+    SecBufferDesc outBufferDesc = {};
+    ULONG contextAttributes = 0;
+    TimeStamp contextLifetime = {};
+
+    ss = AcceptSecurityContext(
+        &credHandle,               // Credential handle
+        nullptr,                   // Context handle (first call)
+        &inBufferDesc,            // Input buffer
+        ASC_REQ_ALLOCATE_MEMORY,  // Context requirements
+        SECURITY_NATIVE_DREP,     // Target data representation
+        &contextHandle,           // New context handle
+        &outBufferDesc,           // Output buffer
+        &contextAttributes,       // Context attributes
+        &contextLifetime          // Context lifetime
+    );
+
+    // Clean up credentials
+    FreeCredentialsHandle(&credHandle);
+
+    if (ss == SEC_E_OK || ss == SEC_I_CONTINUE_NEEDED)
+    {
+        LOG(Logger::INFO, L"SSPI Kerberos ticket processed successfully");
+        
+        // Clean up context
+        DeleteSecurityContext(&contextHandle);
+        
+        // Free any output buffers
+        if (outBufferDesc.pBuffers && outBufferDesc.pBuffers->pvBuffer) {
+            FreeContextBuffer(outBufferDesc.pBuffers->pvBuffer);
+        }
+        
+        return S_OK;
+    }
+    else
+    {
+        HRESULT hr = HRESULT_FROM_WIN32(ss);
+        LOG(Logger::ERR, L"AcceptSecurityContext failed, ss=0x%X, hr=0x%X", ss, hr);
+        return hr;
+    }
+}
+
 // Insert a Kerberos ticket into the cache
 HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size_t ticketLength)
 {
@@ -341,6 +453,9 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
         LOG(Logger::ERR, L"Invalid ticket parameters");
         return E_INVALIDARG;
     }
+
+     // Log that we're running in potentially restricted environment
+    LOG(Logger::INFO, L"Attempting Kerberos ticket insertion in current environment");
 
     HRESULT hrError = S_OK;
     LSAHandle lsaHandle;
@@ -352,8 +467,13 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
     {
         // Connect to LSA
         hrError = lsaHandle.Connect();
-        if (FAILED(hrError)) {
-            throw hrError;
+        if (FAILED(hrError)) 
+        {
+            LOG(Logger::WARN, L"LSA connection failed (hr=0x%X), this is expected in container environments", hrError);
+            
+            // Fallback to SSPI method
+            LOG(Logger::INFO, L"Attempting SSPI fallback method...");
+            return InsertKerberosTicketSSPI(kerberosTicket, ticketLength);
         }
 
         // Lookup the Kerberos authentication package
@@ -369,8 +489,29 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
         {
             hrError = HRESULT_FROM_WIN32(LsaNtStatusToWinError(ntStatus));
             LOG(Logger::ERR, L"LsaLookupAuthenticationPackage failed; ntstatus=%d, hr=0x%X", ntStatus, hrError);
-            throw hrError;
+            
+            // Try SSPI fallback
+            LOG(Logger::INFO, L"LSA lookup failed, attempting SSPI fallback...");
+            return InsertKerberosTicketSSPI(kerberosTicket, ticketLength);
         }
+
+        HANDLE hToken;
+        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+            HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
+            printf("OpenProcessToken failed. Error: %lu\n", hr);
+            return hr;
+        }
+    
+        TOKEN_STATISTICS ts;
+        DWORD dwSize;
+        if (!GetTokenInformation(hToken, TokenStatistics, &ts, sizeof(ts), &dwSize)) {
+            HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
+            printf("GetTokenInformation failed. Error: %lu\n", hr);
+            CloseHandle(hToken);
+            return hr;
+        }
+ 
+        printf("Logon ID (LUID): 0x%08x%08x\n", ts.AuthenticationId.HighPart, ts.AuthenticationId.LowPart);
 
         // Allocate memory for the submit request
         size_t submitRequestSize = sizeof(KERB_SUBMIT_TKT_REQUEST) + ticketLength;
@@ -387,10 +528,10 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
         pSubmitRequest->MessageType = KerbSubmitTicketMessage;
         pSubmitRequest->KerbCredSize = static_cast<ULONG>(ticketLength);
         pSubmitRequest->KerbCredOffset = sizeof(KERB_SUBMIT_TKT_REQUEST);
-        pSubmitRequest->LogonId = luidZero;
+        pSubmitRequest->LogonId = ts.AuthenticationId;
         pSubmitRequest->Key.KeyType = 0;
         pSubmitRequest->Key.Length = 0;
-        pSubmitRequest->Key.Offset = 0;
+        pSubmitRequest->Key.Offset = 0;        
 
         // Copy ticket data
         memcpy(reinterpret_cast<BYTE*>(pSubmitRequest) + pSubmitRequest->KerbCredOffset,
@@ -470,10 +611,18 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
     {
         hrError = E_UNEXPECTED;
         LOGA(Logger::ERR, "Generic exception '%s' hr=0x%X.", e.what(), hrError);
+
+        // Try SSPI as final fallback
+        LOG(Logger::INFO, L"Exception occurred, attempting SSPI fallback as last resort...");
+        return InsertKerberosTicketSSPI(kerberosTicket, ticketLength);
     }
     catch (const HRESULT& caughtHr)
     {
         hrError = caughtHr;
+
+        // Try SSPI as final fallback
+        LOG(Logger::INFO, L"HRESULT exception (0x%X), attempting SSPI fallback as last resort...", hrError);
+        return InsertKerberosTicketSSPI(kerberosTicket, ticketLength);
     }
 
     // Clean up resources
