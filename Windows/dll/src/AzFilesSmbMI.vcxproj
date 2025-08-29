@@ -225,7 +225,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;AZFILESSMBMI_EXPORTS;_WINDOWS;_USRDLL;SECURITY_WIN32;VERSION_MAJOR=$(VersionMajor);VERSION_MINOR=$(VersionMinor);VERSION_BUILD=$(VersionBuild);VERSION_REVISION=$(VersionRevision);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;AZFILESSMBMI_EXPORTS;_WINDOWS;_USRDLL;VERSION_MAJOR=$(VersionMajor);VERSION_MINOR=$(VersionMinor);VERSION_BUILD=$(VersionBuild);VERSION_REVISION=$(VersionRevision);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
