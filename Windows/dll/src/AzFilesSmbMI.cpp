@@ -350,6 +350,7 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
     PVOID pResponse = nullptr;
     ULONG responseSize = 0;
     KERB_SUBMIT_TKT_REQUEST* pSubmitRequest = nullptr;
+    HANDLE hToken;
 
     try
     {
@@ -377,7 +378,6 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
             throw hrError;
         }
 
-        HANDLE hToken;
         if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
             HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
             LOG(Logger::ERR, L"OpenProcessToken failed. Error: %lu\n", hr);
@@ -507,6 +507,12 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
     if (pResponse)
     {
         LsaFreeReturnBuffer(pResponse);
+    }
+
+    if(hToken)
+    {
+        CloseHandle(hToken);
+        hToken = nullptr;
     }
 
     return hrError;
