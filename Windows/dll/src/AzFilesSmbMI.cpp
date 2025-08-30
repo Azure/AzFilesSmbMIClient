@@ -357,6 +357,7 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
         hrError = lsaHandle.Connect();
         if (FAILED(hrError)) 
         {
+            LOG(Logger::ERR, L"Connect to LSA failed. Error: 0x%X", hrError);
             throw hrError;
         }
 
@@ -379,7 +380,7 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
         HANDLE hToken;
         if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
             HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
-            printf("OpenProcessToken failed. Error: %lu\n", hr);
+            LOG(Logger::ERR, L"OpenProcessToken failed. Error: %lu\n", hr);
             return hr;
         }
     
@@ -387,12 +388,12 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
         DWORD dwSize;
         if (!GetTokenInformation(hToken, TokenStatistics, &ts, sizeof(ts), &dwSize)) {
             HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
-            printf("GetTokenInformation failed. Error: %lu\n", hr);
+            LOG(Logger::ERR, L"GetTokenInformation failed. Error: %lu\n", hr);
             CloseHandle(hToken);
             return hr;
         }
- 
-        printf("Logon ID (LUID): 0x%08x%08x\n", ts.AuthenticationId.HighPart, ts.AuthenticationId.LowPart);
+
+        LOG(Logger::VERBOSE, L"Logon ID (LUID): 0x%08x%08x", ts.AuthenticationId.HighPart, ts.AuthenticationId.LowPart);
 
         // Allocate memory for the submit request
         size_t submitRequestSize = sizeof(KERB_SUBMIT_TKT_REQUEST) + ticketLength;
@@ -404,8 +405,7 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
             throw hrError;
         }
 
-        // Initialize submit request
-        LUID luidZero = {0, 0};
+        // Initialize submit request        
         pSubmitRequest->MessageType = KerbSubmitTicketMessage;
         pSubmitRequest->KerbCredSize = static_cast<ULONG>(ticketLength);
         pSubmitRequest->KerbCredOffset = sizeof(KERB_SUBMIT_TKT_REQUEST);
