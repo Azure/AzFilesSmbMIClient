@@ -30,9 +30,9 @@ Abstract:
 #include <iomanip>
 #include <chrono>
 #include <unordered_map>
-#include <algorithm>    
-#include <cctype>       
-#include <stdexcept>    
+#include <algorithm>
+#include <cctype>
+#include <stdexcept>
 #include "Logger.h"
 #include "AzFilesSmbMI.h"
 
@@ -354,7 +354,7 @@ bool IsRunningInContainer()
         if (RegQueryValueExW(hKey, L"CONTAINER_HOST", nullptr, &valueType, 
                             (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS) {
             RegCloseKey(hKey);
-            LOG(Logger::INFO, L"Container detected via CONTAINER_HOST registry key");
+            LOG(Logger::VERBOSE, L"Container detected via CONTAINER_HOST registry key");
             return true;
         }
         
@@ -362,7 +362,7 @@ bool IsRunningInContainer()
         if (RegQueryValueExW(hKey, L"CONTAINER_NETWORK_NAMESPACE_ID", nullptr, &valueType, 
                             (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS) {
             RegCloseKey(hKey);
-            LOG(Logger::INFO, L"Container detected via CONTAINER_NETWORK_NAMESPACE_ID registry key");
+            LOG(Logger::VERBOSE, L"Container detected via CONTAINER_NETWORK_NAMESPACE_ID registry key");
             return true;
         }
         
@@ -377,7 +377,7 @@ bool IsRunningInContainer()
         if (RegQueryValueExW(hKey, L"ContainerType", nullptr, &dwType, (LPBYTE)&containerType, &dwSize) == ERROR_SUCCESS) {
             RegCloseKey(hKey);
             if (containerType == 2) { // Check for Docker container type
-                LOG(Logger::INFO, L"Container detected via ContainerType registry value");
+                LOG(Logger::VERBOSE, L"Container detected via ContainerType registry value");
                 return true;
             }
         }
@@ -397,7 +397,7 @@ bool IsRunningInContainer()
 
     for (const auto& envVar : containerEnvVars) {
         if (GetEnvironmentVariableW(envVar, envBuffer, sizeof(envBuffer)/sizeof(wchar_t)) > 0) {
-            LOG(Logger::INFO, L"Container detected via environment variable: %ls", envVar);
+            LOG(Logger::VERBOSE, L"Container detected via environment variable: %ls", envVar);
             return true;
         }
     }
@@ -427,7 +427,7 @@ bool IsRunningInContainer()
         // Check if this is a directory
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) 
         {
-            LOG(Logger::INFO, L"Found user folder: %ls", findData.cFileName);
+            LOG(Logger::VERBOSE, L"Found user folder: %ls", findData.cFileName);
             
             // Convert to lowercase for case-insensitive comparison
             std::wstring folderName(findData.cFileName);
@@ -436,7 +436,7 @@ bool IsRunningInContainer()
             // Check if folder name contains "container"
             if (folderName.find(L"container") != std::wstring::npos) 
             {
-                LOG(Logger::INFO, L"Container user folder detected: %ls", findData.cFileName);
+                LOG(Logger::VERBOSE, L"Container user folder detected: %ls", findData.cFileName);
                 foundContainer = true;
                 break; // Found one, no need to continue
             }
