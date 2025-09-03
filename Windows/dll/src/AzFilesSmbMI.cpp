@@ -457,10 +457,9 @@ HRESULT InsertKerberosTicket(_In_ const unsigned char* kerberosTicket, _In_ size
     }
 
     // Log that we're running in potentially restricted environment
-    bool isContainer = IsRunningInContainer();
-    LOG(Logger::INFO, L"Attempting Kerberos ticket insertion in %ls environment", 
-        isContainer ? L"'Container'" : L"'Native'");
-    
+    LOG(Logger::VERBOSE, L"Attempting Kerberos ticket insertion in %ls environment", 
+        IsRunningInContainer() ? L"'Container'" : L"'Native'");
+        
     HRESULT hrError = S_OK;
     LSAHandle lsaHandle;
     PVOID pResponse = nullptr;
