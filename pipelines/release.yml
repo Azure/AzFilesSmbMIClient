@@ -80,6 +80,7 @@ extends:
           ob_nugetPublishing_enabled: true
 
         steps:
+        # Installs the .Net SDK
         - task: UseDotNet@2
           displayName: 'Install .NET SDK'
           inputs:
