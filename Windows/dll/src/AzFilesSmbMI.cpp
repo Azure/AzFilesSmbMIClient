@@ -381,7 +381,7 @@ bool IsRunningInContainer()
                 return true;
             }
         }
-		RegCloseKey(hKey);
+        RegCloseKey(hKey);
     }
     
     // Check for Docker/container environment variables
