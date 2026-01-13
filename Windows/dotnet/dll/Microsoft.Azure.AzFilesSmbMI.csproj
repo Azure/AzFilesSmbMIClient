@@ -31,7 +31,7 @@
       <!-- Build the correct path for the native DLL -->
       <NativeDllPath>$(ProjectDir)\..\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.dll</NativeDllPath>
       <ImportLibraryPath>$(ProjectDir)\..\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.lib</ImportLibraryPath>
-	</PropertyGroup>
+    </PropertyGroup>
     
     <Message Text="Looking for native DLL at: $(NativeDllPath)" Importance="high" />
     <Message Text="Target platform: $(Platform), VC++ platform: $(VCPlatform)" Importance="high" />
