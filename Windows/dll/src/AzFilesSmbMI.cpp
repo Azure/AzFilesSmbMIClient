@@ -1765,4 +1765,3 @@ HRESULT SmbClearCredential(
 {
     return SmbClearCredentialInternal(pwszFileEndpointUri);
 }
-
