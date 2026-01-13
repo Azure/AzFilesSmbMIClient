@@ -375,13 +375,13 @@ bool IsRunningInContainer()
         DWORD dwSize = sizeof(DWORD);
         DWORD containerType;
         if (RegQueryValueExW(hKey, L"ContainerType", nullptr, &dwType, (LPBYTE)&containerType, &dwSize) == ERROR_SUCCESS) {
-            RegCloseKey(hKey);
             if (containerType == 2) { // Check for Docker container type
+				RegCloseKey(hKey);
                 LOG(Logger::VERBOSE, L"Container detected via ContainerType registry value");
                 return true;
             }
         }
-        RegCloseKey(hKey);
+		RegCloseKey(hKey);
     }
     
     // Check for Docker/container environment variables
