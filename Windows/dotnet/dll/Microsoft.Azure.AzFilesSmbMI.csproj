@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <!--
-  Copy the built native DLL to the output directory after build so that it is available alongside the managed assembly for packaging and testing.
+  Copy the built native DLL and import library to the output directory after build so that it is available alongside the managed assembly for packaging and testing.
   -->
   <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
     <PropertyGroup>
@@ -28,24 +28,37 @@
       <VCPlatform Condition="'$(Platform)' == 'x86' or '$(Platform)' == 'AnyCPU'">Win32</VCPlatform>
       <VCPlatform Condition="'$(VCPlatform)' == ''">x64</VCPlatform>
       
-      <!-- Build the correct path for the native DLL -->
+      <!-- Build the correct path for the native DLL and import library -->
       <NativeDllPath>$(ProjectDir)\..\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.dll</NativeDllPath>
+      <ImportLibraryPath>$(ProjectDir)\..\..\dll\src\$(VCPlatform)\$(Configuration)\AzFilesSmbMI.lib</ImportLibraryPath>
     </PropertyGroup>
     
     <Message Text="Looking for native DLL at: $(NativeDllPath)" Importance="high" />
     <Message Text="Target platform: $(Platform), VC++ platform: $(VCPlatform)" Importance="high" />
     
     <Copy SourceFiles="$(NativeDllPath)" DestinationFolder="$(OutDir)" Condition="Exists('$(NativeDllPath)')" />
-          
+
     <Warning Text="Native DLL not found at $(NativeDllPath)" Condition="!Exists('$(NativeDllPath)')" />
+
+    <Message Text="Looking for import library at: $(ImportLibraryPath)" Importance="high" />
+    <Message Text="Target platform: $(Platform), VC++ platform: $(VCPlatform)" Importance="high" />
+
+    <Copy SourceFiles="$(ImportLibraryPath)" DestinationFolder="$(OutDir)" Condition="Exists('$(ImportLibraryPath)')" />
+
+    <Warning Text="Import library not found at $(ImportLibraryPath)" Condition="!Exists('$(ImportLibraryPath)')" />
   </Target>
 
-  <!-- Include native DLL in NuGet package -->
+  <!-- Include native DLL and import library in NuGet package -->
   <ItemGroup>
     <None Include="$(OutDir)AzFilesSmbMI.dll" Condition="Exists('$(OutDir)AzFilesSmbMI.dll')">
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native/AzFilesSmbMI.dll</PackagePath>
-    </None>   
+    </None>
+    
+    <None Include="$(OutDir)AzFilesSmbMI.lib" Condition="Exists('$(OutDir)AzFilesSmbMI.lib')">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-x64/native/AzFilesSmbMI.lib</PackagePath>
+    </None>
 
     <!-- Include .targets file for automatic deployment -->
     <None Include="Microsoft.Azure.AzFilesSmbMI.targets">
