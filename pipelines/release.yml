@@ -221,7 +221,7 @@ extends:
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '*.exe;*.dll,*.lib'
+            files_to_sign: '*.exe;*.dll;*.lib'
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
 
@@ -261,7 +261,7 @@ extends:
             Contents: '*.lib'
             TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
-            
+
         - task: MSBuild@1
           displayName: 'Create NuGet Package with signed binaries'
           inputs:
