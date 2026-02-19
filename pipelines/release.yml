@@ -206,6 +206,18 @@ extends:
             ob_restore_phase: true
 
         - task: CopyFiles@2
+          displayName: 'Copy header files to output directory'
+          inputs:
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dll\src'
+            Contents: '**/AzFilesSmbMI.h'
+            TargetFolder: '$(BuildOutput)'
+            flattenFolders: true
+          env:
+            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+            # https://aka.ms/obpipelines/SigningFileWatcher
+            ob_restore_phase: true
+
+        - task: CopyFiles@2
           displayName: 'Copy EXE binaries to output directory'
           inputs:
             SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
