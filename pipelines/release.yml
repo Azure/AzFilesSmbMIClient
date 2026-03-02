@@ -149,7 +149,7 @@ extends:
             solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dll\src\AzFilesSmbMI.vcxproj'
             configuration: '$(BuildConfiguration)'
             platform: '$(BuildPlatform)'
-            #msbuildArguments: '/p:Version=$(PackageVersion)'
+            msbuildArguments: '/p:ControlFlowGuard=Guard'
           env:
             ob_restore_phase: true
 
