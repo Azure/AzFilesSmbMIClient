@@ -274,6 +274,14 @@ extends:
             TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
 
+        - task: CopyFiles@2
+          displayName: 'Copy signed Headers back to build directory'
+          inputs:
+            SourceFolder: '$(BuildOutput)'
+            Contents: '*.h'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
+            OverWrite: true
+
         - task: MSBuild@1
           displayName: 'Create NuGet Package with signed binaries'
           inputs:

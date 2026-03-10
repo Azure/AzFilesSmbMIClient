@@ -196,6 +196,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
     </ClCompile>
 
     <ResourceCompile>
@@ -213,6 +214,7 @@
         Winhttp.lib;
         Crypt32.lib;
       </AdditionalDependencies>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
     </Link>
     <PreBuildEvent>
       <Command>
@@ -230,6 +232,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary> <!-- Static linking -->
+      <ControlFlowGuard>Guard</ControlFlowGuard>
     </ClCompile>
 
     <ResourceCompile>
@@ -249,6 +252,7 @@
         Winhttp.lib;
         Crypt32.lib;
       </AdditionalDependencies>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
     </Link>
     <PreBuildEvent>
       <Command>
