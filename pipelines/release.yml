@@ -75,9 +75,11 @@ extends:
           # ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
           ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
           # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
+          ob_release_releaseType: 'SharedComponentRelease'
+          ob_release_releaseEnvironment: 'Production'
           # We only want to publish NuGet packages when building Release from main branch
-          #${{ if and(eq(variables['BuildConfiguration'], 'Release'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
-          ob_nugetPublishing_enabled: true
+          ${{ if and(eq(parameters.buildConfig, 'Release'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+            ob_nugetPublishing_enabled: true
 
         steps:
         - task: UseDotNet@2
@@ -256,7 +258,7 @@ extends:
             assetUploadMode: 'replace'
             isDraft: false
             isPreRelease: true
-          condition: succeeded()
+          condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
 
         - task: CopyFiles@2
           displayName: 'Copy signed DLLs back to build directory'
