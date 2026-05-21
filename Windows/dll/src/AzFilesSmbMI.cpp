@@ -1012,7 +1012,8 @@ HRESULT DoHttpVerb(
     LOG(Logger::VERBOSE, L"BEGIN");
 
     const DWORD MAX_RETRIES = 3;
-    const HRESULT HR_ERROR_TIMEOUT = static_cast<HRESULT>(0x800705B4);
+    const HRESULT HR_ERROR_TIMEOUT = HRESULT_FROM_WIN32(ERROR_TIMEOUT);           // 0x800705B4
+    const HRESULT HR_WINHTTP_TIMEOUT = HRESULT_FROM_WIN32(ERROR_WINHTTP_TIMEOUT); // 0x80072EE2
     HRESULT hrError = S_OK;
 
     for (DWORD dwRetry = 0; dwRetry <= MAX_RETRIES; dwRetry++)
@@ -1338,8 +1339,8 @@ HRESULT DoHttpVerb(
     // The WinHttpHandle class destructor will automatically clean up resources
     // No manual cleanup needed thanks to RAII
 
-    // Retry on specific HRESULT 0x830A183C
-    if (hrError == HR_ERROR_TIMEOUT && dwRetry < MAX_RETRIES)
+    // Retry on timeout errors (ERROR_TIMEOUT or ERROR_WINHTTP_TIMEOUT)
+    if ((hrError == HR_ERROR_TIMEOUT || hrError == HR_WINHTTP_TIMEOUT) && dwRetry < MAX_RETRIES)
     {
         LOG(Logger::WARN, L"Received hr=0x%X, retrying (%d/%d)...", hrError, dwRetry + 1, MAX_RETRIES);
         ::Sleep(1000 * (dwRetry + 1)); // Incremental backoff
