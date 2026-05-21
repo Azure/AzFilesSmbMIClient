@@ -1011,11 +1011,18 @@ HRESULT DoHttpVerb(
 {
     LOG(Logger::VERBOSE, L"BEGIN");
 
+    const DWORD MAX_RETRIES = 3;
+    const HRESULT HR_ERROR_TIMEOUT = HRESULT_FROM_WIN32(ERROR_TIMEOUT);           // 0x800705B4
+    const HRESULT HR_WINHTTP_TIMEOUT = HRESULT_FROM_WIN32(ERROR_WINHTTP_TIMEOUT); // 0x80072EE2
+    HRESULT hrError = S_OK;
+
+    for (DWORD dwRetry = 0; dwRetry <= MAX_RETRIES; dwRetry++)
+    {
     // Use RAII for proper resource cleanup
     WinHttpHandle hSession;
     WinHttpHandle hConnect;
     WinHttpHandle hRequest;
-    HRESULT hrError = S_OK;
+    hrError = S_OK;
 
     winhttpResponse.clear();
 
@@ -1332,6 +1339,17 @@ HRESULT DoHttpVerb(
     // The WinHttpHandle class destructor will automatically clean up resources
     // No manual cleanup needed thanks to RAII
 
+    // Retry on timeout errors (ERROR_TIMEOUT or ERROR_WINHTTP_TIMEOUT)
+    if ((hrError == HR_ERROR_TIMEOUT || hrError == HR_WINHTTP_TIMEOUT) && dwRetry < MAX_RETRIES)
+    {
+        LOG(Logger::WARN, L"Received hr=0x%X, retrying (%d/%d)...", hrError, dwRetry + 1, MAX_RETRIES);
+        ::Sleep(1000 * (dwRetry + 1)); // Incremental backoff
+        continue;
+    }
+
+    break; // Success or non-retryable error
+    } // end retry loop
+
     LOG(Logger::VERBOSE, L"END with hr=0x%X", hrError);
     return hrError;
 }
@@ -1465,9 +1483,9 @@ HRESULT SmbSetCredentialInternal(
 
         std::wstring wstrAccountFileUri = pwszFileEndpointUri;
 
-        if (wstrAccountFileUri[wstrAccountFileUri.length() - 1] != L'/') {
-            LOG(Logger::ERR, L"File URI '%ls' is not ending with trailing '/'", wstrAccountFileUri.c_str());
-            throw E_INVALIDARG;
+        if (wstrAccountFileUri.back() != L'/') {
+            LOG(Logger::VERBOSE, L"File URI '%ls' is not ending with trailing '/', appending one", wstrAccountFileUri.c_str());
+            wstrAccountFileUri += L'/';
         }
 
         if (wstrAccountFileUri.substr(0, 8) != L"https://") {
@@ -1624,12 +1642,13 @@ HRESULT SmbRefreshCredentialInternal(
             throw E_INVALIDARG;
         }
 
-        if (pwszFileEndpointUri[wcslen(pwszFileEndpointUri) - 1] != L'/') {
-            LOG(Logger::ERR, L"File URI '%ls' is not ending with trailing '/'", pwszFileEndpointUri);
-            throw E_INVALIDARG;
+        std::wstring wstrFileEndpointUri = pwszFileEndpointUri;
+        if (wstrFileEndpointUri.back() != L'/') {
+            LOG(Logger::VERBOSE, L"File URI '%ls' is not ending with trailing '/', appending one", wstrFileEndpointUri.c_str());
+            wstrFileEndpointUri += L'/';
         }
 
-        auto ctx = std::make_shared<RefreshContext>(pwszFileEndpointUri, pwszClientID);
+        auto ctx = std::make_shared<RefreshContext>(wstrFileEndpointUri.c_str(), pwszClientID);
 
         ctx->shEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
         if (!ctx->shEvent) {
@@ -1649,8 +1668,8 @@ HRESULT SmbRefreshCredentialInternal(
 
         {
             std::lock_guard<std::mutex> lock(timerMapMutex);
-            auto result = s_timerMap.insert_or_assign(std::wstring(pwszFileEndpointUri), ctx);
-            LOG(Logger::INFO, L"%ls refresh registration for %ls", result.second ? L"Created" : L"Updated", pwszFileEndpointUri);
+            auto result = s_timerMap.insert_or_assign(wstrFileEndpointUri, ctx);
+            LOG(Logger::INFO, L"%ls refresh registration for %ls", result.second ? L"Created" : L"Updated", wstrFileEndpointUri.c_str());
         }
 
         FILETIME ftDueTime;
