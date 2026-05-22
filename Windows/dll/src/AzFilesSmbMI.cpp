@@ -1258,7 +1258,16 @@ HRESULT DoHttpVerb(
             }
             else
             {
-                LOG(Logger::INFO, L"x-ms-error-code: (not present), http status: %d", dwStatusCode);
+                DWORD dwHeaderError = GetLastError();
+                if (dwHeaderError == ERROR_WINHTTP_HEADER_NOT_FOUND)
+                {
+                    LOG(Logger::INFO, L"x-ms-error-code: (not present), http status: %d", dwStatusCode);
+                }
+                else
+                {
+                    LOG(Logger::WARN, L"Failed to query x-ms-error-code header, gle=%d, http status: %d",
+                        dwHeaderError, dwStatusCode);
+                }
             }
         }
 
@@ -1273,15 +1282,62 @@ HRESULT DoHttpVerb(
                                     &retryAfterBufSize,
                                     WINHTTP_NO_HEADER_INDEX))
             {
-                DWORD parsedValue = static_cast<DWORD>(_wtol(retryAfterBuf));
-                if (parsedValue > 0 && parsedValue <= 120) // Cap at 2 minutes
+                // Try parsing as delta-seconds first (all-digit value)
+                bool isDeltaSeconds = true;
+                for (DWORD i = 0; retryAfterBuf[i] != L'\0'; i++)
                 {
-                    dwRetryAfterSeconds = parsedValue;
+                    if (!iswdigit(retryAfterBuf[i]))
+                    {
+                        isDeltaSeconds = false;
+                        break;
+                    }
+                }
+
+                if (isDeltaSeconds && retryAfterBuf[0] != L'\0')
+                {
+                    DWORD parsedValue = static_cast<DWORD>(_wtol(retryAfterBuf));
+                    if (parsedValue > 0 && parsedValue <= 120) // Cap at 2 minutes
+                    {
+                        dwRetryAfterSeconds = parsedValue;
+                    }
                 }
                 else
                 {
-                    dwRetryAfterSeconds = 0; // Ignore unreasonable values
+                    // Try parsing as HTTP-date (RFC 1123 format: "Sun, 06 Nov 1994 08:49:37 GMT")
+                    std::wstring retryDateStr(retryAfterBuf);
+                    std::string retryDateUtf8(retryDateStr.begin(), retryDateStr.end());
+
+                    std::tm tmRetry = {};
+                    std::istringstream iss(retryDateUtf8);
+                    iss >> std::get_time(&tmRetry, "%a, %d %b %Y %H:%M:%S");
+
+                    if (!iss.fail())
+                    {
+                        // Convert parsed time to time_t (mktime interprets as local time)
+                        std::time_t retryTime = std::mktime(&tmRetry);
+                        if (retryTime != -1)
+                        {
+                            // Adjust for timezone since the date is GMT/UTC
+                            long timezone_seconds = 0;
+                            _get_timezone(&timezone_seconds);
+                            retryTime -= timezone_seconds;
+
+                            std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                            double diffSeconds = std::difftime(retryTime, now);
+
+                            if (diffSeconds <= 0)
+                            {
+                                dwRetryAfterSeconds = 0; // Date is in the past, retry immediately
+                            }
+                            else if (diffSeconds <= 120)
+                            {
+                                dwRetryAfterSeconds = static_cast<DWORD>(diffSeconds);
+                            }
+                            // else: exceeds cap, fall back to incremental backoff
+                        }
+                    }
                 }
+
                 LOG(Logger::INFO, L"Retry-After: %ls (using %d seconds)", retryAfterBuf, dwRetryAfterSeconds);
             }
         }
@@ -1398,7 +1454,7 @@ HRESULT DoHttpVerb(
                                    dwLastHttpStatus == 503 ||  // ServiceUnavailable
                                    dwLastHttpStatus == 504);   // GatewayTimeout
 
-    if ((bIsRetryableTimeout || bIsRetryableHttpStatus) && dwRetry < MAX_RETRIES)
+    if ((bIsRetryableTimeout || bIsRetryableHttpStatus) && (dwRetry < MAX_RETRIES))
     {
         DWORD dwSleepSeconds = (dwRetryAfterSeconds > 0) ? dwRetryAfterSeconds : (dwRetry + 1);
         LOG(Logger::WARN, L"Received hr=0x%X, http status=%d, retrying in %d seconds (%d/%d)...",
