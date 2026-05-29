@@ -1015,6 +1015,8 @@ HRESULT DoHttpVerb(
     const HRESULT HR_ERROR_TIMEOUT = HRESULT_FROM_WIN32(ERROR_TIMEOUT);           // 0x800705B4
     const HRESULT HR_WINHTTP_TIMEOUT = HRESULT_FROM_WIN32(ERROR_WINHTTP_TIMEOUT); // 0x80072EE2
     HRESULT hrError = S_OK;
+    DWORD dwLastHttpStatus = 0;
+    DWORD dwRetryAfterSeconds = 0;
 
     for (DWORD dwRetry = 0; dwRetry <= MAX_RETRIES; dwRetry++)
     {
@@ -1023,6 +1025,8 @@ HRESULT DoHttpVerb(
     WinHttpHandle hConnect;
     WinHttpHandle hRequest;
     hrError = S_OK;
+    dwLastHttpStatus = 0;
+    dwRetryAfterSeconds = 0;
 
     winhttpResponse.clear();
 
@@ -1236,7 +1240,109 @@ HRESULT DoHttpVerb(
             throw hrError;
         }
 
-        LOG(Logger::INFO, L"http status=%d", dwStatusCode);        // Read the response data (even in error cases)
+        LOG(Logger::INFO, L"http status=%d", dwStatusCode);
+
+        // Always log x-ms-error-code and HTTP status
+        dwLastHttpStatus = dwStatusCode;
+        {
+            wchar_t xMsErrorCode[256] = {};
+            DWORD xMsErrorCodeSize = sizeof(xMsErrorCode);
+            if (WinHttpQueryHeaders(hRequest,
+                                    WINHTTP_QUERY_CUSTOM,
+                                    L"x-ms-error-code",
+                                    xMsErrorCode,
+                                    &xMsErrorCodeSize,
+                                    WINHTTP_NO_HEADER_INDEX))
+            {
+                LOG(Logger::INFO, L"x-ms-error-code: %ls, http status: %d", xMsErrorCode, dwStatusCode);
+            }
+            else
+            {
+                DWORD dwHeaderError = GetLastError();
+                if (dwHeaderError == ERROR_WINHTTP_HEADER_NOT_FOUND)
+                {
+                    LOG(Logger::INFO, L"x-ms-error-code: (not present), http status: %d", dwStatusCode);
+                }
+                else
+                {
+                    LOG(Logger::WARN, L"Failed to query x-ms-error-code header, gle=%d, http status: %d",
+                        dwHeaderError, dwStatusCode);
+                }
+            }
+        }
+
+        // Query Retry-After header for retryable status codes
+        {
+            wchar_t retryAfterBuf[64] = {};
+            DWORD retryAfterBufSize = sizeof(retryAfterBuf);
+            if (WinHttpQueryHeaders(hRequest,
+                                    WINHTTP_QUERY_CUSTOM,
+                                    L"Retry-After",
+                                    retryAfterBuf,
+                                    &retryAfterBufSize,
+                                    WINHTTP_NO_HEADER_INDEX))
+            {
+                // Try parsing as delta-seconds first (all-digit value)
+                bool isDeltaSeconds = true;
+                for (DWORD i = 0; retryAfterBuf[i] != L'\0'; i++)
+                {
+                    if (!iswdigit(retryAfterBuf[i]))
+                    {
+                        isDeltaSeconds = false;
+                        break;
+                    }
+                }
+
+                if (isDeltaSeconds && retryAfterBuf[0] != L'\0')
+                {
+                    DWORD parsedValue = static_cast<DWORD>(_wtol(retryAfterBuf));
+                    if (parsedValue > 0 && parsedValue <= 120) // Cap at 2 minutes
+                    {
+                        dwRetryAfterSeconds = parsedValue;
+                    }
+                }
+                else
+                {
+                    // Try parsing as HTTP-date (RFC 1123 format: "Sun, 06 Nov 1994 08:49:37 GMT")
+                    std::wstring retryDateStr(retryAfterBuf);
+                    std::string retryDateUtf8(retryDateStr.begin(), retryDateStr.end());
+
+                    std::tm tmRetry = {};
+                    std::istringstream iss(retryDateUtf8);
+                    iss >> std::get_time(&tmRetry, "%a, %d %b %Y %H:%M:%S");
+
+                    if (!iss.fail())
+                    {
+                        // Convert parsed time to time_t (mktime interprets as local time)
+                        std::time_t retryTime = std::mktime(&tmRetry);
+                        if (retryTime != -1)
+                        {
+                            // Adjust for timezone since the date is GMT/UTC
+                            long timezone_seconds = 0;
+                            _get_timezone(&timezone_seconds);
+                            retryTime -= timezone_seconds;
+
+                            std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                            double diffSeconds = std::difftime(retryTime, now);
+
+                            if (diffSeconds <= 0)
+                            {
+                                dwRetryAfterSeconds = 0; // Date is in the past, retry immediately
+                            }
+                            else if (diffSeconds <= 120)
+                            {
+                                dwRetryAfterSeconds = static_cast<DWORD>(diffSeconds);
+                            }
+                            // else: exceeds cap, fall back to incremental backoff
+                        }
+                    }
+                }
+
+                LOG(Logger::INFO, L"Retry-After: %ls (using %d seconds)", retryAfterBuf, dwRetryAfterSeconds);
+            }
+        }
+
+        // Read the response data (even in error cases)
         // Reserve space in the response string to minimize reallocations
         winhttpResponse.reserve(4096);  // Reserve reasonable initial capacity
 
@@ -1339,11 +1445,21 @@ HRESULT DoHttpVerb(
     // The WinHttpHandle class destructor will automatically clean up resources
     // No manual cleanup needed thanks to RAII
 
-    // Retry on timeout errors (ERROR_TIMEOUT or ERROR_WINHTTP_TIMEOUT)
-    if ((hrError == HR_ERROR_TIMEOUT || hrError == HR_WINHTTP_TIMEOUT) && dwRetry < MAX_RETRIES)
+    // Retry on timeout errors or retryable HTTP status codes
+    bool bIsRetryableTimeout = (hrError == HR_ERROR_TIMEOUT || hrError == HR_WINHTTP_TIMEOUT);
+    bool bIsRetryableHttpStatus = (dwLastHttpStatus == 408 ||  // RequestTimeout
+                                   dwLastHttpStatus == 429 ||  // TooManyRequests
+                                   dwLastHttpStatus == 500 ||  // InternalServerError
+                                   dwLastHttpStatus == 502 ||  // BadGateway
+                                   dwLastHttpStatus == 503 ||  // ServiceUnavailable
+                                   dwLastHttpStatus == 504);   // GatewayTimeout
+
+    if ((bIsRetryableTimeout || bIsRetryableHttpStatus) && (dwRetry < MAX_RETRIES))
     {
-        LOG(Logger::WARN, L"Received hr=0x%X, retrying (%d/%d)...", hrError, dwRetry + 1, MAX_RETRIES);
-        ::Sleep(1000 * (dwRetry + 1)); // Incremental backoff
+        DWORD dwSleepSeconds = (dwRetryAfterSeconds > 0) ? dwRetryAfterSeconds : (dwRetry + 1);
+        LOG(Logger::WARN, L"Received hr=0x%X, http status=%d, retrying in %d seconds (%d/%d)...",
+            hrError, dwLastHttpStatus, dwSleepSeconds, dwRetry + 1, MAX_RETRIES);
+        ::Sleep(dwSleepSeconds * 1000);
         continue;
     }
 
