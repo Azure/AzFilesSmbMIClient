@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net472</TargetFramework>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
@@ -22,7 +22,8 @@
     <PropertyGroup>
       <!-- Map .NET platform to VC++ platform -->
       <VCPlatform Condition="'$(Platform)' == 'x64'">x64</VCPlatform>
-      <VCPlatform Condition="'$(Platform)' == 'x86' or '$(Platform)' == 'AnyCPU'">Win32</VCPlatform>
+      <VCPlatform Condition="'$(Platform)' == 'ARM64'">ARM64</VCPlatform>
+      <VCPlatform Condition="'$(Platform)' == 'x86' or '$(Platform)' == 'AnyCPU'">x64</VCPlatform>
       <VCPlatform Condition="'$(VCPlatform)' == ''">x64</VCPlatform>
       
       <!-- Build the correct path for the native DLL -->

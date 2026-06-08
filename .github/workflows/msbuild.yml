@@ -13,6 +13,7 @@ on:
 
 env:
   # Path to the solution file relative to the root of the project.
+  NATIVE_VCXPROJ: .\Windows\dll\src\AzFilesSmbMI.vcxproj
   DLL_FILE_PATH: .\Windows\dotnet\dll\Microsoft.Azure.AzFilesSmbMI.csproj
   EXE_FILE_PATH: .\windows\exe\AzFilesSmbMIClient.csproj
 
@@ -39,9 +40,19 @@ jobs:
       run: | 
           nuget restore ${{env.DLL_FILE_PATH}}
           nuget restore ${{env.EXE_FILE_PATH}}
-      
-    - name: Build
+
+    - name: Build Native C++ DLL (x64)
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.EXE_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 ${{env.NATIVE_VCXPROJ}}
+
+    - name: Build Native C++ DLL (ARM64)
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=ARM64 ${{env.NATIVE_VCXPROJ}}
+
+    - name: Build Managed DLL
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:BuildProjectReferences=false ${{env.DLL_FILE_PATH}}
+
+    - name: Build EXE
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:BuildProjectReferences=false ${{env.EXE_FILE_PATH}}

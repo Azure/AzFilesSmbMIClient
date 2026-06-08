@@ -1,7 +1,16 @@
 <Project>
+  <!-- Determine native architecture based on project platform target -->
+  <PropertyGroup>
+    <_AzFilesSmbMINativeArch Condition="'$(PlatformTarget)' == 'ARM64' OR '$(Platform)' == 'ARM64'">win-arm64</_AzFilesSmbMINativeArch>
+    <_AzFilesSmbMINativeArch Condition="'$(PlatformTarget)' == 'x64' OR '$(Platform)' == 'x64'">win-x64</_AzFilesSmbMINativeArch>
+    <!-- For AnyCPU, use the build machine's architecture -->
+    <_AzFilesSmbMINativeArch Condition="'$(_AzFilesSmbMINativeArch)' == '' AND '$(PROCESSOR_ARCHITECTURE)' == 'ARM64'">win-arm64</_AzFilesSmbMINativeArch>
+    <_AzFilesSmbMINativeArch Condition="'$(_AzFilesSmbMINativeArch)' == ''">win-x64</_AzFilesSmbMINativeArch>
+  </PropertyGroup>
+
   <!-- Automatically copy the native DLL to output directory when package is consumed -->
   <ItemGroup>
-    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'x64' OR '$(PlatformTarget)' == 'x64' OR ('$(Platform)' == '' AND '$(PlatformTarget)' == '')">
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/$(_AzFilesSmbMINativeArch)/native/AzFilesSmbMI.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
