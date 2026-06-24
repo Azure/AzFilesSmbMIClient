@@ -296,7 +296,7 @@ extends:
         variables:
           ob_outputDirectory: '$(Build.SourcesDirectory)\out'
           ob_release_releaseType: 'SharedComponentRelease'
-          ob_release_releaseEnvironment: 'Production'
+          ob_release_environment: 'Production'
 
         steps:
         - download: current
