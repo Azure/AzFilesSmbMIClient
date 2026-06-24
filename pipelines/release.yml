@@ -317,7 +317,7 @@ extends:
               Automated release of signed binaries
               Build: $(Build.BuildNumber)
               Commit: $(Build.SourceVersion)
-            assets: '$(Pipeline.Workspace)/build/main/*'
+            assets: '$(ob_outputDirectory)/*'
             assetUploadMode: 'replace'
             isDraft: false
             isPreRelease: true
