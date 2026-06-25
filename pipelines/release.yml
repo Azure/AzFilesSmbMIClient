@@ -288,6 +288,8 @@ extends:
     - stage: release
       dependsOn: build
       condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+      variables:
+        ob_release_environment: 'Production'
       jobs:
       - job: publish_github_release
         pool:
@@ -296,7 +298,6 @@ extends:
         variables:
           ob_outputDirectory: '$(Build.SourcesDirectory)\out'
           ob_release_releaseType: 'SharedComponentRelease'
-          ob_release_environment: 'Production'
 
         steps:
         - download: current
