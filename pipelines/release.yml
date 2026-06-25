@@ -285,7 +285,7 @@ extends:
             search_root: '$(PackageOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
 
-    - stage: release
+    - stage: Prod_release
       dependsOn: build
       condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
       variables:
