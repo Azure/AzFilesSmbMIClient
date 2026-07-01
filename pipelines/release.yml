@@ -293,7 +293,7 @@ extends:
       jobs:
       - job: publish_github_release
         pool:
-          type: release
+          type: windows
 
         variables:
           ob_outputDirectory: '$(Build.SourcesDirectory)\out'
