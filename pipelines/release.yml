@@ -287,7 +287,7 @@ extends:
 
     - stage: Prod_release
       dependsOn: build
-      condition: and(in(dependencies.build.result, 'Succeeded', 'SucceededWithIssues'))
+      condition: in(dependencies.build.result, 'Succeeded', 'SucceededWithIssues')
       variables:
         ob_release_environment: 'Production'
       jobs:
