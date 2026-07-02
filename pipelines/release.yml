@@ -302,11 +302,12 @@ extends:
       - job: publish_github_release
         displayName: 'Publish GitHub Release'
         pool:
-          type: windows
+          type: release
 
         variables:
           ob_outputDirectory: '$(Build.SourcesDirectory)\out'
           ob_release_releaseType: 'SharedComponentRelease'
+          ob_release_custom: true
 
         steps:
         - download: current
