@@ -5,6 +5,10 @@ parameters:
     values:
     - Debug
     - Release
+  - name: release
+    displayName: Publish GitHub Release
+    type: boolean
+    default: false
 
 trigger: none # https://aka.ms/obpipelines/triggers
 
@@ -287,11 +291,13 @@ extends:
 
     - stage: Prod_release
       dependsOn: build
-      condition: in(dependencies.build.result, 'Succeeded', 'SucceededWithIssues')
+      condition: and(in(dependencies.build.result, 'Succeeded', 'SucceededWithIssues'), eq('${{ parameters.release }}', 'true'))
       variables:
         ob_release_environment: 'Production'
       jobs:
       - job: publish_github_release
+        displayName: 'Publish GitHub Release'
+        environment: 'production'
         pool:
           type: windows
 
