@@ -308,6 +308,18 @@ extends:
           inputs:
             targetType: 'inline'
             script: |
+              # Get GitHub token from service connection (same auth as GitHubRelease@1)
+              $adoHeaders = @{
+                Authorization = "Bearer $env:SYSTEM_ACCESSTOKEN"
+              }
+              $endpointUrl = "$(System.CollectionUri)$(System.TeamProject)/_apis/serviceendpoint/endpoints?endpointNames=github.com_AzFilesSmbMIClient&api-version=7.0"
+              $endpoints = Invoke-RestMethod -Uri $endpointUrl -Headers $adoHeaders -Method Get
+              if ($endpoints.count -eq 0) {
+                Write-Error "Service connection 'github.com_AzFilesSmbMIClient' not found"
+                exit 1
+              }
+              $githubToken = $endpoints.value[0].authorization.parameters.accessToken
+
               $tag = "v$(Build.BuildNumber)"
               $repo = "$(Build.Repository.Name)"
               $commitSha = "$(Build.SourceVersion)"
@@ -324,7 +336,7 @@ extends:
               } | ConvertTo-Json
 
               $headers = @{
-                Authorization = "token $env:GitHubPAT"
+                Authorization = "token $githubToken"
                 Accept = "application/vnd.github+json"
               }
 
@@ -343,6 +355,6 @@ extends:
               }
               Write-Host "GitHub Release $tag created successfully with $($assets.Count) assets."
           env:
-            GitHubPAT: $(GitHubServiceConnectionToken)
+            SYSTEM_ACCESSTOKEN: $(System.AccessToken)
           condition: succeeded()
   
