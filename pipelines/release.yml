@@ -298,10 +298,9 @@ extends:
       - deployment: 'StageRelease'
         displayName: 'Stage GitHub Release'
         environment: 'production'
-        
+
       - job: publish_github_release
         displayName: 'Publish GitHub Release'
-        environment: 'production'
         pool:
           type: windows
 
