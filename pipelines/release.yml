@@ -295,6 +295,10 @@ extends:
       variables:
         ob_release_environment: 'Production'
       jobs:
+      - deployment: 'StageRelease'
+        displayName: 'Stage GitHub Release'
+        environment: 'production'
+        
       - job: publish_github_release
         displayName: 'Publish GitHub Release'
         environment: 'production'
