@@ -324,7 +324,7 @@ extends:
               } | ConvertTo-Json
 
               $headers = @{
-                Authorization = "token $(GitHubPAT)"
+                Authorization = "token $env:GitHubPAT"
                 Accept = "application/vnd.github+json"
               }
 
