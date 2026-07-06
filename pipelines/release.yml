@@ -79,6 +79,7 @@ extends:
           # ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}: # conditionally enable symbolsPublishing for master branch only
           ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
           # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)\.gdn\job.gdnsuppress
+          ob_release_releaseType: 'SharedComponentRelease'
           # We only want to publish NuGet packages when building Release from main branch
           ${{ if and(eq(parameters.buildConfig, 'Release'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
             ob_nugetPublishing_enabled: true
@@ -289,26 +290,6 @@ extends:
             search_root: '$(PackageOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
 
-    - stage: Prod_release
-      dependsOn: build
-      condition: and(in(dependencies.build.result, 'Succeeded', 'SucceededWithIssues'), eq('${{ parameters.release }}', 'true'))
-      variables:
-        ob_release_environment: 'Production'
-      jobs:
-      - job: publish_github_release
-        displayName: 'Publish GitHub Release'
-        pool:
-          type: release
-
-        variables:
-          ob_outputDirectory: '$(Build.SourcesDirectory)\out'
-          ob_release_releaseType: 'SharedComponentRelease'
-          ob_release_custom: true
-
-        steps:
-        - download: current
-          displayName: 'Download build artifacts'
-
         - task: GitHubRelease@1
           displayName: 'Publish signed binaries to GitHub Release'
           inputs:
@@ -324,9 +305,9 @@ extends:
               Automated release of signed binaries
               Build: $(Build.BuildNumber)
               Commit: $(Build.SourceVersion)
-            assets: '$(Pipeline.Workspace)/build/main/*'
+            assets: '$(BuildOutput)/*'
             assetUploadMode: 'replace'
             isDraft: false
             isPreRelease: true
-          condition: succeeded()
-  
+          condition: and(succeeded(), eq('${{ parameters.release }}', 'true'))
+
