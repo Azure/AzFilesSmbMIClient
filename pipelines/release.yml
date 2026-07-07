@@ -13,6 +13,7 @@ parameters:
 trigger: none # https://aka.ms/obpipelines/triggers
 
 variables:
+- group: GitHubSecrets # Variable group containing GitHubPAT secret. Create at Pipelines > Library > + Variable group
 - name: system.debug
   value: true
 - name: BuildConfiguration
@@ -294,6 +295,15 @@ extends:
           inputs:
             targetType: 'inline'
             script: |
+              # Validate token is present
+              if (-not $env:GITHUB_TOKEN) {
+                Write-Error "GITHUB_TOKEN environment variable is empty. Ensure GitHubPAT secret variable is configured in the pipeline."
+                exit 1
+              }
+              $tokenLength = $env:GITHUB_TOKEN.Length
+              $tokenPrefix = $env:GITHUB_TOKEN.Substring(0, [Math]::Min(10, $tokenLength))
+              Write-Host "Token length: $tokenLength, starts with: ${tokenPrefix}..."
+
               $tag = "v$(Build.BuildNumber)"
               $repo = "$(Build.Repository.Name)"
               $commitSha = "$(Build.SourceVersion)"
