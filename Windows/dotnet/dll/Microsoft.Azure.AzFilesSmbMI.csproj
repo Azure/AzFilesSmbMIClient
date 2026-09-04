@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net472</TargetFramework>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
@@ -23,9 +23,9 @@
   -->
   <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
     <PropertyGroup>
-      <!-- Map .NET platform to VC++ platform -->
-      <VCPlatform Condition="'$(Platform)' == 'x64'">x64</VCPlatform>
-      <VCPlatform Condition="'$(Platform)' == 'x86' or '$(Platform)' == 'AnyCPU'">Win32</VCPlatform>
+      <!-- Map .NET platform to VC++ platform (AnyCPU defaults to x64 for local runs) -->
+      <VCPlatform Condition="'$(Platform)' == 'ARM64'">ARM64</VCPlatform>
+      <VCPlatform Condition="'$(Platform)' == 'x86'">Win32</VCPlatform>
       <VCPlatform Condition="'$(VCPlatform)' == ''">x64</VCPlatform>
       
       <!-- Build the correct path for the native DLL and import library -->
@@ -48,16 +48,34 @@
     <Warning Text="Import library not found at $(ImportLibraryPath)" Condition="!Exists('$(ImportLibraryPath)')" />
   </Target>
 
-  <!-- Include native DLL and import library in NuGet package -->
+  <!-- Include native DLL and import library for each RID in the NuGet package.
+       Prefer the signed binaries copied back into the per-platform bin folders by the
+       pipeline; fall back to the raw native build output for local packing. -->
+  <PropertyGroup>
+    <NativeX64Dir Condition="Exists('$(ProjectDir)bin\x64\$(Configuration)\net472\AzFilesSmbMI.dll')">$(ProjectDir)bin\x64\$(Configuration)\net472</NativeX64Dir>
+    <NativeX64Dir Condition="'$(NativeX64Dir)' == ''">$(ProjectDir)..\..\dll\src\x64\$(Configuration)</NativeX64Dir>
+    <NativeArm64Dir Condition="Exists('$(ProjectDir)bin\ARM64\$(Configuration)\net472\AzFilesSmbMI.dll')">$(ProjectDir)bin\ARM64\$(Configuration)\net472</NativeArm64Dir>
+    <NativeArm64Dir Condition="'$(NativeArm64Dir)' == ''">$(ProjectDir)..\..\dll\src\ARM64\$(Configuration)</NativeArm64Dir>
+  </PropertyGroup>
   <ItemGroup>
-    <None Include="$(OutDir)AzFilesSmbMI.dll" Condition="Exists('$(OutDir)AzFilesSmbMI.dll')">
+    <None Include="$(NativeX64Dir)\AzFilesSmbMI.dll" Condition="Exists('$(NativeX64Dir)\AzFilesSmbMI.dll')">
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native/AzFilesSmbMI.dll</PackagePath>
     </None>
-    
-    <None Include="$(OutDir)AzFilesSmbMI.lib" Condition="Exists('$(OutDir)AzFilesSmbMI.lib')">
+
+    <None Include="$(NativeX64Dir)\AzFilesSmbMI.lib" Condition="Exists('$(NativeX64Dir)\AzFilesSmbMI.lib')">
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native/AzFilesSmbMI.lib</PackagePath>
+    </None>
+
+    <None Include="$(NativeArm64Dir)\AzFilesSmbMI.dll" Condition="Exists('$(NativeArm64Dir)\AzFilesSmbMI.dll')">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-arm64/native/AzFilesSmbMI.dll</PackagePath>
+    </None>
+
+    <None Include="$(NativeArm64Dir)\AzFilesSmbMI.lib" Condition="Exists('$(NativeArm64Dir)\AzFilesSmbMI.lib')">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-arm64/native/AzFilesSmbMI.lib</PackagePath>
     </None>
 
     <!-- Include .targets file for automatic deployment -->
