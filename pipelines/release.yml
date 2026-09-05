@@ -9,6 +9,14 @@ parameters:
     displayName: Publish GitHub Release
     type: boolean
     default: false
+  - name: platforms
+    displayName: Native platforms to build
+    type: object
+    default:
+      - name: x64
+        rid: win-x64
+      - name: ARM64
+        rid: win-arm64
 
 trigger: none # https://aka.ms/obpipelines/triggers
 
@@ -148,15 +156,16 @@ extends:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
             # https://aka.ms/obpipelines/SigningFileWatcher
             ob_restore_phase: true
-        - task: MSBuild@1
-          displayName: 'Build Native C++ DLL '
-          inputs:
-            solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dll\src\AzFilesSmbMI.vcxproj'
-            configuration: '$(BuildConfiguration)'
-            platform: '$(BuildPlatform)'
-            msbuildArguments: '/p:ControlFlowGuard=Guard'
-          env:
-            ob_restore_phase: true
+        - ${{ each platform in parameters.platforms }}:
+          - task: MSBuild@1
+            displayName: 'Build Native C++ DLL (${{ platform.name }})'
+            inputs:
+              solution: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dll\src\AzFilesSmbMI.vcxproj'
+              configuration: '$(BuildConfiguration)'
+              platform: '${{ platform.name }}'
+              msbuildArguments: '/p:ControlFlowGuard=Guard'
+            env:
+              ob_restore_phase: true
 
         - task: MSBuild@1
           displayName: 'Restore and Build Managed DLL'
@@ -186,25 +195,26 @@ extends:
             NUGET_CERT_REVOCATION_MODE: offline
             ob_restore_phase: true
         
-        - task: CopyFiles@2
-          displayName: 'Copy DLL binaries to output directory'
-          inputs:
-            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
-            Contents: '**/*.dll'              
-            TargetFolder: '$(BuildOutput)'
-            flattenFolders: true
-          env:
-            # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
-            # https://aka.ms/obpipelines/SigningFileWatcher
-            ob_restore_phase: true
+        - ${{ each platform in parameters.platforms }}:
+          - task: CopyFiles@2
+            displayName: 'Copy native binaries (${{ platform.name }}) to output directory'
+            inputs:
+              SourceFolder: 'AzFilesSmbMIClient\Windows\dll\src\${{ platform.name }}\$(BuildConfiguration)'
+              Contents: |
+                AzFilesSmbMI.dll
+                AzFilesSmbMI.lib
+              TargetFolder: '$(BuildOutput)\runtimes\${{ platform.rid }}\native'
+            env:
+              # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+              # https://aka.ms/obpipelines/SigningFileWatcher
+              ob_restore_phase: true
 
         - task: CopyFiles@2
-          displayName: 'Copy lib to output directory'
+          displayName: 'Copy managed DLL to output directory'
           inputs:
             SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
-            Contents: '**/*.lib'              
-            TargetFolder: '$(BuildOutput)'
-            flattenFolders: true
+            Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
+            TargetFolder: '$(BuildOutput)\managed'
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
             # https://aka.ms/obpipelines/SigningFileWatcher
@@ -238,23 +248,26 @@ extends:
           inputs:
             command: 'sign'
             signing_profile: 'external_distribution' # https://eng.ms/docs/products/onebranch/signing/containerbuildsigning#signing_profile
-            files_to_sign: '*.exe;*.dll;*.lib'
+            files_to_sign: '**/*.exe;**/*.dll;**/*.lib'
             search_root: '$(BuildOutput)'
           condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
 
-        - task: CopyFiles@2
-          displayName: 'Copy signed DLLs back to build directory'
-          inputs:
-            SourceFolder: '$(BuildOutput)'
-            Contents: '*.dll'
-            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
-            OverWrite: true
+        - ${{ each platform in parameters.platforms }}:
+          - task: CopyFiles@2
+            displayName: 'Copy signed native binaries (${{ platform.name }}) back to build directory'
+            inputs:
+              SourceFolder: '$(BuildOutput)\runtimes\${{ platform.rid }}\native'
+              Contents: |
+                *.dll
+                *.lib
+              TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\${{ platform.name }}\$(BuildConfiguration)\net472'
+              OverWrite: true
 
         - task: CopyFiles@2
-          displayName: 'Copy signed LIBs back to build directory'
+          displayName: 'Copy signed managed DLL back to build directory'
           inputs:
-            SourceFolder: '$(BuildOutput)'
-            Contents: '*.lib'
+            SourceFolder: '$(BuildOutput)\managed'
+            Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
             TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
 
@@ -329,11 +342,15 @@ extends:
               $release = Invoke-RestMethod -Uri $releaseUrl -Method Post -Headers $headers -Body $releaseBody -ContentType "application/json"
               $uploadUrl = $release.upload_url -replace '\{\?name,label\}', ''
 
-              # Upload assets
-              $assets = Get-ChildItem -Path $artifactPath -File
+              # Upload assets (recurse so per-architecture native binaries under runtimes\ are included)
+              $assets = Get-ChildItem -Path $artifactPath -File -Recurse
               foreach ($asset in $assets) {
-                Write-Host "Uploading $($asset.Name)..."
-                $uploadUri = "${uploadUrl}?name=$($asset.Name)"
+                # Build a unique asset name from the path relative to the artifact root so that
+                # same-named native binaries for different architectures do not collide.
+                $relativePath = $asset.FullName.Substring($artifactPath.Length).TrimStart('\', '/')
+                $assetName = $relativePath -replace '[\\/]', '_'
+                Write-Host "Uploading $assetName..."
+                $uploadUri = "${uploadUrl}?name=$assetName"
                 $contentType = "application/octet-stream"
                 Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $asset.FullName -ContentType $contentType
               }

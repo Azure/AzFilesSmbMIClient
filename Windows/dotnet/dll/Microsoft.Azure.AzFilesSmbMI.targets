@@ -1,7 +1,16 @@
 <Project>
-  <!-- Automatically copy the native DLL to output directory when package is consumed -->
+  <!-- Automatically copy the matching native DLL to the output directory when the package is consumed -->
   <ItemGroup>
-    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'x64' OR '$(PlatformTarget)' == 'x64' OR ('$(Platform)' == '' AND '$(PlatformTarget)' == '')">
+    <!-- ARM64 consumers -->
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-arm64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'ARM64' OR '$(PlatformTarget)' == 'ARM64'">
+      <Link>AzFilesSmbMI.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+
+    <!-- x64 consumers (also the default for AnyCPU builds) -->
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'x64' OR '$(PlatformTarget)' == 'x64' OR (('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU'))">
+      <Link>AzFilesSmbMI.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
