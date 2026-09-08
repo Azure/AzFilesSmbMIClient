@@ -342,19 +342,39 @@ extends:
               $release = Invoke-RestMethod -Uri $releaseUrl -Method Post -Headers $headers -Body $releaseBody -ContentType "application/json"
               $uploadUrl = $release.upload_url -replace '\{\?name,label\}', ''
 
-              # Upload assets (recurse so per-architecture native binaries under runtimes\ are included)
-              $assets = Get-ChildItem -Path $artifactPath -File -Recurse
-              foreach ($asset in $assets) {
-                # Build a unique asset name from the path relative to the artifact root so that
-                # same-named native binaries for different architectures do not collide.
-                $relativePath = $asset.FullName.Substring($artifactPath.Length).TrimStart('\', '/')
-                $assetName = $relativePath -replace '[\\/]', '_'
-                Write-Host "Uploading $assetName..."
-                $uploadUri = "${uploadUrl}?name=$assetName"
-                $contentType = "application/octet-stream"
-                Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $asset.FullName -ContentType $contentType
+              # Upload platform-neutral assets (exe, managed DLL, header, nupkg) with their original names.
+              $flatAssets = @()
+              $flatAssets += Get-ChildItem -Path $artifactPath -File
+              $flatAssets += Get-ChildItem -Path (Join-Path $artifactPath 'managed') -File -ErrorAction SilentlyContinue
+              $flatAssets += Get-ChildItem -Path (Join-Path $artifactPath 'packages') -File -ErrorAction SilentlyContinue
+              $assetCount = 0
+              foreach ($asset in $flatAssets) {
+                Write-Host "Uploading $($asset.Name)..."
+                $uploadUri = "${uploadUrl}?name=$($asset.Name)"
+                Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $asset.FullName -ContentType "application/octet-stream"
+                $assetCount++
               }
-              Write-Host "GitHub Release $tag created successfully with $($assets.Count) assets."
+
+              # GitHub release assets are a flat namespace (no folders and no duplicate names),
+              # so package each platform's native binaries into a per-platform zip that keeps the
+              # original file names (e.g. AzFilesSmbMI-x64.zip -> AzFilesSmbMI.dll, AzFilesSmbMI.lib).
+              $runtimesRoot = Join-Path $artifactPath 'runtimes'
+              if (Test-Path $runtimesRoot) {
+                foreach ($platformDir in Get-ChildItem -Path $runtimesRoot -Directory) {
+                  $nativeDir = Join-Path $platformDir.FullName 'native'
+                  if (-not (Test-Path $nativeDir)) { continue }
+                  $platformName = $platformDir.Name -replace '^win-', ''
+                  $zipName = "AzFilesSmbMI-$platformName.zip"
+                  $zipPath = Join-Path ([System.IO.Path]::GetTempPath()) $zipName
+                  if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+                  Compress-Archive -Path (Join-Path $nativeDir '*') -DestinationPath $zipPath
+                  Write-Host "Uploading $zipName..."
+                  $uploadUri = "${uploadUrl}?name=$zipName"
+                  Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $zipPath -ContentType "application/zip"
+                  $assetCount++
+                }
+              }
+              Write-Host "GitHub Release $tag created successfully with $assetCount assets."
           env:
             GITHUB_TOKEN: $(GitHubPAT)
           condition: and(succeeded(), eq('${{ parameters.release }}', 'true'))
