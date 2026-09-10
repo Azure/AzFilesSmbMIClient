@@ -212,7 +212,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy managed DLL to output directory'
           inputs:
-            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
             Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
             TargetFolder: '$(BuildOutput)\managed'
           env:
@@ -235,7 +235,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy EXE binaries to output directory'
           inputs:
-            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
             Contents: '**/*.exe'            
             TargetFolder: '$(BuildOutput)'
           env:
@@ -260,7 +260,7 @@ extends:
               Contents: |
                 *.dll
                 *.lib
-              TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\${{ platform.name }}\$(BuildConfiguration)\net472'
+              TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\${{ platform.name }}\$(BuildConfiguration)\net481'
               OverWrite: true
 
         - task: CopyFiles@2
@@ -268,7 +268,7 @@ extends:
           inputs:
             SourceFolder: '$(BuildOutput)\managed'
             Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
-            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
             OverWrite: true
 
         - task: CopyFiles@2
@@ -276,7 +276,7 @@ extends:
           inputs:
             SourceFolder: '$(BuildOutput)'
             Contents: '*.h'
-            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
             OverWrite: true
 
         - task: MSBuild@1

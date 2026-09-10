@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net481</TargetFramework>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
@@ -52,9 +52,9 @@
        Prefer the signed binaries copied back into the per-platform bin folders by the
        pipeline; fall back to the raw native build output for local packing. -->
   <PropertyGroup>
-    <NativeX64Dir Condition="Exists('$(ProjectDir)bin\x64\$(Configuration)\net472\AzFilesSmbMI.dll')">$(ProjectDir)bin\x64\$(Configuration)\net472</NativeX64Dir>
+    <NativeX64Dir Condition="Exists('$(ProjectDir)bin\x64\$(Configuration)\net481\AzFilesSmbMI.dll')">$(ProjectDir)bin\x64\$(Configuration)\net481</NativeX64Dir>
     <NativeX64Dir Condition="'$(NativeX64Dir)' == ''">$(ProjectDir)..\..\dll\src\x64\$(Configuration)</NativeX64Dir>
-    <NativeArm64Dir Condition="Exists('$(ProjectDir)bin\ARM64\$(Configuration)\net472\AzFilesSmbMI.dll')">$(ProjectDir)bin\ARM64\$(Configuration)\net472</NativeArm64Dir>
+    <NativeArm64Dir Condition="Exists('$(ProjectDir)bin\ARM64\$(Configuration)\net481\AzFilesSmbMI.dll')">$(ProjectDir)bin\ARM64\$(Configuration)\net481</NativeArm64Dir>
     <NativeArm64Dir Condition="'$(NativeArm64Dir)' == ''">$(ProjectDir)..\..\dll\src\ARM64\$(Configuration)</NativeArm64Dir>
   </PropertyGroup>
   <ItemGroup>
