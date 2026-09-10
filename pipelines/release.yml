@@ -342,32 +342,37 @@ extends:
               $release = Invoke-RestMethod -Uri $releaseUrl -Method Post -Headers $headers -Body $releaseBody -ContentType "application/json"
               $uploadUrl = $release.upload_url -replace '\{\?name,label\}', ''
 
-              # Upload platform-neutral assets (exe, managed DLL, header, nupkg) with their original names.
-              $flatAssets = @()
-              $flatAssets += Get-ChildItem -Path $artifactPath -File
-              $flatAssets += Get-ChildItem -Path (Join-Path $artifactPath 'managed') -File -ErrorAction SilentlyContinue
-              $flatAssets += Get-ChildItem -Path (Join-Path $artifactPath 'packages') -File -ErrorAction SilentlyContinue
+              # Publish the NuGet package (also pushed to the feed) as its own asset.
               $assetCount = 0
-              foreach ($asset in $flatAssets) {
-                Write-Host "Uploading $($asset.Name)..."
-                $uploadUri = "${uploadUrl}?name=$($asset.Name)"
-                Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $asset.FullName -ContentType "application/octet-stream"
+              foreach ($pkg in (Get-ChildItem -Path (Join-Path $artifactPath 'packages') -File -ErrorAction SilentlyContinue)) {
+                Write-Host "Uploading $($pkg.Name)..."
+                $uploadUri = "${uploadUrl}?name=$($pkg.Name)"
+                Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $pkg.FullName -ContentType "application/octet-stream"
                 $assetCount++
               }
 
-              # GitHub release assets are a flat namespace (no folders and no duplicate names),
-              # so package each platform's native binaries into a per-platform zip that keeps the
-              # original file names (e.g. AzFilesSmbMI-x64.zip -> AzFilesSmbMI.dll, AzFilesSmbMI.lib).
+              # Files shared by every architecture (AnyCPU exe + managed DLL + header).
+              $sharedFiles = @()
+              $sharedFiles += Get-ChildItem -Path $artifactPath -File
+              $sharedFiles += Get-ChildItem -Path (Join-Path $artifactPath 'managed') -File -ErrorAction SilentlyContinue
+
+              # Publish one self-contained zip per architecture (e.g. AzFilesSmbMIClient_X64.zip):
+              # shared files plus that architecture's native DLL and import library, all flat.
               $runtimesRoot = Join-Path $artifactPath 'runtimes'
               if (Test-Path $runtimesRoot) {
                 foreach ($platformDir in Get-ChildItem -Path $runtimesRoot -Directory) {
                   $nativeDir = Join-Path $platformDir.FullName 'native'
                   if (-not (Test-Path $nativeDir)) { continue }
-                  $platformName = $platformDir.Name -replace '^win-', ''
-                  $zipName = "AzFilesSmbMI-$platformName.zip"
+                  $arch = ($platformDir.Name -replace '^win-', '').ToUpperInvariant()
+                  $stageDir = Join-Path ([System.IO.Path]::GetTempPath()) "AzFilesSmbMIClient_$arch"
+                  if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
+                  New-Item -ItemType Directory -Path $stageDir | Out-Null
+                  $sharedFiles | Copy-Item -Destination $stageDir
+                  Get-ChildItem -Path $nativeDir -File | Copy-Item -Destination $stageDir
+                  $zipName = "AzFilesSmbMIClient_$arch.zip"
                   $zipPath = Join-Path ([System.IO.Path]::GetTempPath()) $zipName
                   if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-                  Compress-Archive -Path (Join-Path $nativeDir '*') -DestinationPath $zipPath
+                  Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath
                   Write-Host "Uploading $zipName..."
                   $uploadUri = "${uploadUrl}?name=$zipName"
                   Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $zipPath -ContentType "application/zip"
@@ -375,21 +380,6 @@ extends:
                 }
               }
 
-              # Self-contained client bundle: exe + managed DLL + both native runtimes laid out under
-              # runtimes\win-<arch>\native so the app loads the correct native DLL on x64 and ARM64.
-              $bundleDir = Join-Path ([System.IO.Path]::GetTempPath()) 'AzFilesSmbMIClient-bundle'
-              if (Test-Path $bundleDir) { Remove-Item $bundleDir -Recurse -Force }
-              New-Item -ItemType Directory -Path $bundleDir | Out-Null
-              Get-ChildItem -Path $artifactPath -File | Copy-Item -Destination $bundleDir
-              Get-ChildItem -Path (Join-Path $artifactPath 'managed') -File -ErrorAction SilentlyContinue | Copy-Item -Destination $bundleDir
-              if (Test-Path $runtimesRoot) { Copy-Item -Path $runtimesRoot -Destination $bundleDir -Recurse }
-              $bundleZip = Join-Path ([System.IO.Path]::GetTempPath()) 'AzFilesSmbMIClient.zip'
-              if (Test-Path $bundleZip) { Remove-Item $bundleZip -Force }
-              Compress-Archive -Path (Join-Path $bundleDir '*') -DestinationPath $bundleZip
-              Write-Host "Uploading AzFilesSmbMIClient.zip..."
-              $uploadUri = "${uploadUrl}?name=AzFilesSmbMIClient.zip"
-              Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $bundleZip -ContentType "application/zip"
-              $assetCount++
               Write-Host "GitHub Release $tag created successfully with $assetCount assets."
           env:
             GITHUB_TOKEN: $(GitHubPAT)
