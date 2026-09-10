@@ -1,16 +1,29 @@
 <Project>
-  <!-- Automatically copy the matching native DLL to the output directory when the package is consumed -->
+  <!-- Deploy the native DLL so the architecture that matches the running process is available. -->
   <ItemGroup>
-    <!-- ARM64 consumers -->
+    <!-- Explicit x64 build: place the x64 native next to the app. -->
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'x64' OR '$(PlatformTarget)' == 'x64'">
+      <Link>AzFilesSmbMI.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+
+    <!-- Explicit ARM64 build: place the ARM64 native next to the app. -->
     <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-arm64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'ARM64' OR '$(PlatformTarget)' == 'ARM64'">
       <Link>AzFilesSmbMI.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
 
-    <!-- x64 consumers (also the default for AnyCPU builds) -->
-    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="'$(Platform)' == 'x64' OR '$(PlatformTarget)' == 'x64' OR (('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU'))">
-      <Link>AzFilesSmbMI.dll</Link>
+    <!-- AnyCPU / unspecified build: the process architecture is only known at runtime, so deploy every
+         native under runtimes\win-<rid>\native and let AzFilesSmbMI load the matching one at startup. -->
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU')">
+      <Link>runtimes\win-x64\native\AzFilesSmbMI.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-arm64/native/AzFilesSmbMI.dll" Condition="('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU')">
+      <Link>runtimes\win-arm64\native\AzFilesSmbMI.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>

@@ -204,6 +204,7 @@ extends:
                 AzFilesSmbMI.dll
                 AzFilesSmbMI.lib
               TargetFolder: '$(BuildOutput)\runtimes\${{ platform.rid }}\native'
+              failOnEmptySource: true
             env:
               # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
               # https://aka.ms/obpipelines/SigningFileWatcher
@@ -215,6 +216,7 @@ extends:
             SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
             TargetFolder: '$(BuildOutput)\managed'
+            failOnEmptySource: true
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
             # https://aka.ms/obpipelines/SigningFileWatcher
@@ -238,6 +240,7 @@ extends:
             SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             Contents: '**/*.exe'            
             TargetFolder: '$(BuildOutput)'
+            failOnEmptySource: true
           env:
             # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
             # https://aka.ms/obpipelines/SigningFileWatcher
@@ -262,6 +265,7 @@ extends:
                 *.lib
               TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\${{ platform.name }}\$(BuildConfiguration)\net472'
               OverWrite: true
+              failOnEmptySource: true
 
         - task: CopyFiles@2
           displayName: 'Copy signed managed DLL back to build directory'
@@ -270,6 +274,7 @@ extends:
             Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
             TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
+            failOnEmptySource: true
 
         - task: CopyFiles@2
           displayName: 'Copy signed Headers back to build directory'

@@ -23,9 +23,9 @@
   -->
   <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
     <PropertyGroup>
-      <!-- Map .NET platform to VC++ platform (AnyCPU defaults to x64 for local runs) -->
-      <VCPlatform Condition="'$(Platform)' == 'ARM64'">ARM64</VCPlatform>
-      <VCPlatform Condition="'$(Platform)' == 'x86'">Win32</VCPlatform>
+      <!-- Map .NET platform to VC++ platform (honor PlatformTarget; AnyCPU defaults to x64 for local runs) -->
+      <VCPlatform Condition="'$(Platform)' == 'ARM64' OR '$(PlatformTarget)' == 'ARM64'">ARM64</VCPlatform>
+      <VCPlatform Condition="'$(VCPlatform)' == '' AND ('$(Platform)' == 'x86' OR '$(PlatformTarget)' == 'x86')">Win32</VCPlatform>
       <VCPlatform Condition="'$(VCPlatform)' == ''">x64</VCPlatform>
       
       <!-- Build the correct path for the native DLL and import library -->
