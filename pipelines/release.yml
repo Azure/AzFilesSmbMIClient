@@ -212,7 +212,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy managed DLL to output directory'
           inputs:
-            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
+            SourceFolder: 'AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
             TargetFolder: '$(BuildOutput)\managed'
           env:
@@ -235,7 +235,7 @@ extends:
         - task: CopyFiles@2
           displayName: 'Copy EXE binaries to output directory'
           inputs:
-            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
+            SourceFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\exe\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             Contents: '**/*.exe'            
             TargetFolder: '$(BuildOutput)'
           env:
@@ -260,7 +260,7 @@ extends:
               Contents: |
                 *.dll
                 *.lib
-              TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\${{ platform.name }}\$(BuildConfiguration)\net481'
+              TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\${{ platform.name }}\$(BuildConfiguration)\net472'
               OverWrite: true
 
         - task: CopyFiles@2
@@ -268,7 +268,7 @@ extends:
           inputs:
             SourceFolder: '$(BuildOutput)\managed'
             Contents: 'Microsoft.Azure.AzFilesSmbMI.dll'
-            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
 
         - task: CopyFiles@2
@@ -276,7 +276,7 @@ extends:
           inputs:
             SourceFolder: '$(BuildOutput)'
             Contents: '*.h'
-            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net481'
+            TargetFolder: '$(Build.SourcesDirectory)\AzFilesSmbMIClient\Windows\dotnet\dll\bin\$(BuildPlatform)\$(BuildConfiguration)\net472'
             OverWrite: true
 
         - task: MSBuild@1
@@ -374,6 +374,22 @@ extends:
                   $assetCount++
                 }
               }
+
+              # Self-contained client bundle: exe + managed DLL + both native runtimes laid out under
+              # runtimes\win-<arch>\native so the app loads the correct native DLL on x64 and ARM64.
+              $bundleDir = Join-Path ([System.IO.Path]::GetTempPath()) 'AzFilesSmbMIClient-bundle'
+              if (Test-Path $bundleDir) { Remove-Item $bundleDir -Recurse -Force }
+              New-Item -ItemType Directory -Path $bundleDir | Out-Null
+              Get-ChildItem -Path $artifactPath -File | Copy-Item -Destination $bundleDir
+              Get-ChildItem -Path (Join-Path $artifactPath 'managed') -File -ErrorAction SilentlyContinue | Copy-Item -Destination $bundleDir
+              if (Test-Path $runtimesRoot) { Copy-Item -Path $runtimesRoot -Destination $bundleDir -Recurse }
+              $bundleZip = Join-Path ([System.IO.Path]::GetTempPath()) 'AzFilesSmbMIClient.zip'
+              if (Test-Path $bundleZip) { Remove-Item $bundleZip -Force }
+              Compress-Archive -Path (Join-Path $bundleDir '*') -DestinationPath $bundleZip
+              Write-Host "Uploading AzFilesSmbMIClient.zip..."
+              $uploadUri = "${uploadUrl}?name=AzFilesSmbMIClient.zip"
+              Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $bundleZip -ContentType "application/zip"
+              $assetCount++
               Write-Host "GitHub Release $tag created successfully with $assetCount assets."
           env:
             GITHUB_TOKEN: $(GitHubPAT)
