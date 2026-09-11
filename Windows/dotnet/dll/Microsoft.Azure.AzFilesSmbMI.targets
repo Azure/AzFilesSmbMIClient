@@ -17,12 +17,12 @@
 
     <!-- AnyCPU / unspecified build: the process architecture is only known at runtime, so deploy every
          native under runtimes\win-<rid>\native and let AzFilesSmbMI load the matching one at startup. -->
-    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU')">
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/AzFilesSmbMI.dll" Condition="('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU' OR '$(Platform)' == 'Any CPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU' OR '$(PlatformTarget)' == 'Any CPU')">
       <Link>runtimes\win-x64\native\AzFilesSmbMI.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
-    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-arm64/native/AzFilesSmbMI.dll" Condition="('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU')">
+    <Content Include="$(MSBuildThisFileDirectory)../runtimes/win-arm64/native/AzFilesSmbMI.dll" Condition="('$(Platform)' == '' OR '$(Platform)' == 'AnyCPU' OR '$(Platform)' == 'Any CPU') AND ('$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU' OR '$(PlatformTarget)' == 'Any CPU')">
       <Link>runtimes\win-arm64\native\AzFilesSmbMI.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
