@@ -356,34 +356,26 @@ extends:
                 $assetCount++
               }
 
-              # Files shared by every architecture (AnyCPU exe + managed DLL + header).
+              # The client exe is AnyCPU: its process architecture (x64 vs ARM64) is decided at runtime by
+              # the installed .NET Framework, not by the download. So ship one self-contained bundle with
+              # both native runtimes under runtimes\win-<rid>\native and let AzFilesSmbMI load the match.
               $sharedFiles = @()
               $sharedFiles += Get-ChildItem -Path $artifactPath -File
               $sharedFiles += Get-ChildItem -Path (Join-Path $artifactPath 'managed') -File -ErrorAction SilentlyContinue
 
-              # Publish one self-contained zip per architecture (e.g. AzFilesSmbMIClient_X64.zip):
-              # shared files plus that architecture's native DLL and import library, all flat.
               $runtimesRoot = Join-Path $artifactPath 'runtimes'
-              if (Test-Path $runtimesRoot) {
-                foreach ($platformDir in Get-ChildItem -Path $runtimesRoot -Directory) {
-                  $nativeDir = Join-Path $platformDir.FullName 'native'
-                  if (-not (Test-Path $nativeDir)) { continue }
-                  $arch = ($platformDir.Name -replace '^win-', '').ToUpperInvariant()
-                  $stageDir = Join-Path ([System.IO.Path]::GetTempPath()) "AzFilesSmbMIClient_$arch"
-                  if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
-                  New-Item -ItemType Directory -Path $stageDir | Out-Null
-                  $sharedFiles | Copy-Item -Destination $stageDir
-                  Get-ChildItem -Path $nativeDir -File | Copy-Item -Destination $stageDir
-                  $zipName = "AzFilesSmbMIClient_$arch.zip"
-                  $zipPath = Join-Path ([System.IO.Path]::GetTempPath()) $zipName
-                  if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-                  Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath
-                  Write-Host "Uploading $zipName..."
-                  $uploadUri = "${uploadUrl}?name=$zipName"
-                  Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $zipPath -ContentType "application/zip"
-                  $assetCount++
-                }
-              }
+              $stageDir = Join-Path ([System.IO.Path]::GetTempPath()) 'AzFilesSmbMIClient'
+              if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
+              New-Item -ItemType Directory -Path $stageDir | Out-Null
+              $sharedFiles | Copy-Item -Destination $stageDir
+              if (Test-Path $runtimesRoot) { Copy-Item -Path $runtimesRoot -Destination $stageDir -Recurse }
+              $zipPath = Join-Path ([System.IO.Path]::GetTempPath()) 'AzFilesSmbMIClient.zip'
+              if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+              Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath
+              Write-Host "Uploading AzFilesSmbMIClient.zip..."
+              $uploadUri = "${uploadUrl}?name=AzFilesSmbMIClient.zip"
+              Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -InFile $zipPath -ContentType "application/zip"
+              $assetCount++
 
               Write-Host "GitHub Release $tag created successfully with $assetCount assets."
           env:
