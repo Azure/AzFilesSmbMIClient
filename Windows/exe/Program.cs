@@ -29,7 +29,7 @@ namespace AzFilesSmbMIClient
             TraceMessage($"Options:");
             TraceMessage($"  --uri <uri>               - (Required) Azure Files endpoint URI");
             TraceMessage($"  --token <token>           - OAuth token (for 'set' command)");
-            TraceMessage($"  --clientId <id>           - User managed identity client ID");
+            TraceMessage($"  --clientId <id>           - User managed identity client ID (Azure VM only)");
             TraceMessage($"  --expiry <seconds>        - Time in seconds for refresh operation (default: 86400)");
             TraceMessage($"");
             TraceMessage($"Examples:");
@@ -37,6 +37,8 @@ namespace AzFilesSmbMIClient
             TraceMessage($"  AzFilesSmbMIClient.exe set --uri https://myaccount.file.core.windows.net/ --token mytoken");
             TraceMessage($"  AzFilesSmbMIClient.exe refresh --uri https://myaccount.file.core.windows.net/ --clientId myclient --expiry 3600");
             TraceMessage($"  AzFilesSmbMIClient.exe clear --uri https://myaccount.file.core.windows.net/");
+            TraceMessage($"");
+            TraceMessage($"Azure Arc-enabled servers automatically use IDENTITY_ENDPOINT and the machine's system-assigned identity.");
             TraceMessage($"");
         }
 
@@ -103,11 +105,11 @@ namespace AzFilesSmbMIClient
                 
                 if (token.Length == 0)
                 {
-                    loggingMessage.Append("Token will be obtained via IMDS endpoint. ");
+                    loggingMessage.Append("Token will be obtained via the managed identity endpoint. ");
                 }
                 else
                 {
-                    loggingMessage.Append($"Using OAuth Token: '{token}' ");
+                    loggingMessage.Append("Using supplied OAuth token. ");
                 }
 
                 if (clientId.Length > 0)
