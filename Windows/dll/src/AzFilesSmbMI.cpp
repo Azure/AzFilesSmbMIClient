@@ -1730,7 +1730,7 @@ VOID CALLBACK SmbRefreshTimerCallback(
     ::SetEvent(pContext->shEvent.get());  // Signal main thread that we're done
 
     LARGE_INTEGER liDueTime;
-    liDueTime.QuadPart = -(static_cast<LONGLONG>(dwCredentialExpiresInSeconds * 1000 * 1000 * 10));
+    liDueTime.QuadPart = -(static_cast<LONGLONG>(dwCredentialExpiresInSeconds) * 10'000'000LL);
 
     FILETIME ftDueTime;
     ftDueTime.dwLowDateTime = liDueTime.LowPart;
