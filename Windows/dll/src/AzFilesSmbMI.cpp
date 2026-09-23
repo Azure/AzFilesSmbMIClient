@@ -48,6 +48,38 @@ struct HttpResponseInfo
     std::wstring wwwAuthenticate;
 };
 
+template <typename StringType>
+class SensitiveStringGuard
+{
+public:
+    explicit SensitiveStringGuard(_Inout_ StringType& value) noexcept
+        : value_(value)
+    {
+    }
+
+    ~SensitiveStringGuard() noexcept
+    {
+        Clear();
+    }
+
+    SensitiveStringGuard(const SensitiveStringGuard&) = delete;
+    SensitiveStringGuard& operator=(const SensitiveStringGuard&) = delete;
+
+    void Clear() noexcept
+    {
+        if (!value_.empty())
+        {
+            SecureZeroMemory(
+                &value_[0],
+                value_.size() * sizeof(typename StringType::value_type));
+            value_.clear();
+        }
+    }
+
+private:
+    StringType& value_;
+};
+
 // Forward declarations
 std::vector<unsigned char> FromBase64(_In_ const std::string& str);
 std::string GetValueFromJson(_In_ const std::string& json, _In_ const std::string& key);
@@ -1098,6 +1130,104 @@ void AppendQueryString(
     endpoint += queryString;
 }
 
+std::wstring GetFullPath(_In_ const std::wstring& path)
+{
+    DWORD requiredLength = GetFullPathNameW(path.c_str(), 0, nullptr, nullptr);
+    if (requiredLength == 0)
+    {
+        throw HRESULT_FROM_WIN32(GetLastError());
+    }
+
+    std::vector<wchar_t> buffer(requiredLength);
+    DWORD copiedLength = GetFullPathNameW(
+        path.c_str(),
+        static_cast<DWORD>(buffer.size()),
+        buffer.data(),
+        nullptr);
+    if (copiedLength == 0 || copiedLength >= buffer.size())
+    {
+        throw HRESULT_FROM_WIN32(GetLastError());
+    }
+
+    return std::wstring(buffer.data(), copiedLength);
+}
+
+std::wstring GetFinalPath(_In_ HANDLE handle)
+{
+    DWORD requiredLength = GetFinalPathNameByHandleW(
+        handle,
+        nullptr,
+        0,
+        FILE_NAME_NORMALIZED);
+    if (requiredLength == 0)
+    {
+        throw HRESULT_FROM_WIN32(GetLastError());
+    }
+
+    std::vector<wchar_t> buffer(static_cast<size_t>(requiredLength) + 1);
+    DWORD copiedLength = GetFinalPathNameByHandleW(
+        handle,
+        buffer.data(),
+        static_cast<DWORD>(buffer.size()),
+        FILE_NAME_NORMALIZED);
+    if (copiedLength == 0 || copiedLength >= buffer.size())
+    {
+        throw HRESULT_FROM_WIN32(GetLastError());
+    }
+
+    return std::wstring(buffer.data(), copiedLength);
+}
+
+std::wstring GetExpectedArcKeyDirectory()
+{
+    std::wstring programData;
+    if (!TryGetEnvironmentVariableValue(L"ProgramData", programData))
+    {
+        LOG(Logger::ERR, L"Unable to resolve the ProgramData directory for Azure Arc.");
+        throw HRESULT_FROM_WIN32(ERROR_ENVVAR_NOT_FOUND);
+    }
+
+    programData = TrimWhitespace(programData);
+    if (programData.empty())
+    {
+        LOG(Logger::ERR, L"ProgramData is empty.");
+        throw E_INVALIDARG;
+    }
+
+    if (programData.back() != L'\\' && programData.back() != L'/')
+    {
+        programData += L'\\';
+    }
+
+    return GetFullPath(programData + L"AzureConnectedMachineAgent\\Tokens");
+}
+
+std::wstring ValidateArcKeyPath(_In_ const std::wstring& path)
+{
+    std::wstring fullPath = GetFullPath(path);
+    const size_t lastSeparator = fullPath.find_last_of(L"\\/");
+    if (lastSeparator == std::wstring::npos)
+    {
+        LOG(Logger::ERR, L"hIMDS returned an invalid challenge file path.");
+        throw E_INVALIDARG;
+    }
+
+    const std::wstring directory = fullPath.substr(0, lastSeparator);
+    const std::wstring expectedDirectory = GetExpectedArcKeyDirectory();
+    const bool hasKeyExtension =
+        fullPath.size() >= 4 &&
+        _wcsicmp(fullPath.c_str() + fullPath.size() - 4, L".key") == 0;
+
+    if (_wcsicmp(directory.c_str(), expectedDirectory.c_str()) != 0 ||
+        !hasKeyExtension)
+    {
+        LOG(Logger::ERR, L"hIMDS returned a challenge file outside the Azure Arc token directory.");
+        throw E_INVALIDARG;
+    }
+
+    return fullPath;
+}
+
 std::wstring ParseHimdsChallengePath(_In_ const std::wstring& wwwAuthenticate)
 {
     constexpr PCWSTR prefix = L"Basic realm=";
@@ -1127,12 +1257,12 @@ std::wstring ParseHimdsChallengePath(_In_ const std::wstring& wwwAuthenticate)
         throw E_INVALIDARG;
     }
 
-    return path;
+    return ValidateArcKeyPath(path);
 }
 
 std::wstring ReadHimdsChallengeSecret(_In_ const std::wstring& challengePath)
 {
-    constexpr LONGLONG maxChallengeSize = 64 * 1024;
+    constexpr LONGLONG maxChallengeSize = 4096;
 
     UniqueHandle challengeFile(CreateFileW(
         challengePath.c_str(),
@@ -1150,6 +1280,35 @@ std::wstring ReadHimdsChallengeSecret(_In_ const std::wstring& challengePath)
         throw hr;
     }
 
+    const std::wstring expectedDirectory = GetExpectedArcKeyDirectory();
+    UniqueHandle expectedDirectoryHandle(CreateFileW(
+        expectedDirectory.c_str(),
+        FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        nullptr));
+    if (!expectedDirectoryHandle ||
+        expectedDirectoryHandle.get() == INVALID_HANDLE_VALUE)
+    {
+        HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
+        LOG(Logger::ERR, L"Unable to open the Azure Arc token directory, hr=0x%X", hr);
+        throw hr;
+    }
+
+    const std::wstring finalDirectory = GetFinalPath(expectedDirectoryHandle.get());
+    const std::wstring finalFilePath = GetFinalPath(challengeFile.get());
+    const size_t finalSeparator = finalFilePath.find_last_of(L"\\/");
+    if (finalSeparator == std::wstring::npos ||
+        _wcsicmp(
+            finalFilePath.substr(0, finalSeparator).c_str(),
+            finalDirectory.c_str()) != 0)
+    {
+        LOG(Logger::ERR, L"The hIMDS challenge file resolves outside the Azure Arc token directory.");
+        throw E_INVALIDARG;
+    }
+
     LARGE_INTEGER fileSize = {};
     if (!GetFileSizeEx(challengeFile.get(), &fileSize))
     {
@@ -1165,6 +1324,7 @@ std::wstring ReadHimdsChallengeSecret(_In_ const std::wstring& challengePath)
     }
 
     std::string secret(static_cast<size_t>(fileSize.QuadPart), '\0');
+    SensitiveStringGuard<std::string> secretGuard(secret);
     DWORD totalBytesRead = 0;
     while (totalBytesRead < secret.size())
     {
@@ -1177,14 +1337,12 @@ std::wstring ReadHimdsChallengeSecret(_In_ const std::wstring& challengePath)
                 nullptr))
         {
             HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
-            SecureZeroMemory(&secret[0], secret.size());
             LOG(Logger::ERR, L"Unable to read the hIMDS challenge file, hr=0x%X", hr);
             throw hr;
         }
 
         if (bytesRead == 0)
         {
-            SecureZeroMemory(&secret[0], secret.size());
             LOG(Logger::ERR, L"The hIMDS challenge file could not be read completely.");
             throw HRESULT_FROM_WIN32(ERROR_READ_FAULT);
         }
@@ -1207,14 +1365,11 @@ std::wstring ReadHimdsChallengeSecret(_In_ const std::wstring& challengePath)
         secret.find('\r') != std::string::npos ||
         secret.find('\n') != std::string::npos)
     {
-        SecureZeroMemory(&secret[0], secret.size());
         LOG(Logger::ERR, L"The hIMDS challenge file contains invalid data.");
         throw E_INVALIDARG;
     }
 
-    std::wstring secretWide = UTF8ToWide(secret);
-    SecureZeroMemory(&secret[0], secret.size());
-    return secretWide;
+    return UTF8ToWide(secret);
 }
 
 // Improved HTTP request handling with better resource management
@@ -1404,6 +1559,7 @@ HRESULT DoHttpVerb(
         if (bIsManagedIdentityRequest)
         {
             std::wstring headers = L"Metadata: true\r\n";
+            SensitiveStringGuard<std::wstring> headersGuard(headers);
             if (!authorizationValue.empty())
             {
                 headers += L"Authorization: Basic ";
@@ -1419,15 +1575,11 @@ HRESULT DoHttpVerb(
                                          0,
                                          0,
                                          0);
-
-            if (!authorizationValue.empty())
-            {
-                SecureZeroMemory(&headers[0], headers.size() * sizeof(wchar_t));
-            }
         }
         else
         {
             std::wstring wstrToken = L"Authorization: Bearer " + authorizationValue;
+            SensitiveStringGuard<std::wstring> tokenHeaderGuard(wstrToken);
 
             // For Azure Storage requests, add required headers
             bResult = ::WinHttpAddRequestHeaders(hRequest,
@@ -1463,8 +1615,6 @@ HRESULT DoHttpVerb(
                 LOG(Logger::ERR, L"WinHttpAddRequestHeaders, server %ls, hr=0x%X", requestUrl.c_str(), hrError);
                 throw hrError;
             }
-
-            SecureZeroMemory(&wstrToken[0], wstrToken.size() * sizeof(wchar_t));
 
             // Send the request
             bResult = WinHttpSendRequest(hRequest,
@@ -1812,12 +1962,21 @@ HRESULT GetManagedIdentityAccessToken(
     try
     {
         std::wstring identityEndpoint;
-        bool isArcEndpoint = TryGetEnvironmentVariableValue(
+        const bool hasIdentityEndpoint = TryGetEnvironmentVariableValue(
             L"IDENTITY_ENDPOINT",
             identityEndpoint);
+        std::wstring imdsEndpoint;
+        const bool hasImdsEndpoint = TryGetEnvironmentVariableValue(
+            L"IMDS_ENDPOINT",
+            imdsEndpoint);
 
         identityEndpoint = TrimWhitespace(identityEndpoint);
-        isArcEndpoint = isArcEndpoint && !identityEndpoint.empty();
+        imdsEndpoint = TrimWhitespace(imdsEndpoint);
+        const bool isArcEndpoint =
+            hasIdentityEndpoint &&
+            !identityEndpoint.empty() &&
+            hasImdsEndpoint &&
+            !imdsEndpoint.empty();
 
         if (isArcEndpoint)
         {
@@ -1830,10 +1989,15 @@ HRESULT GetManagedIdentityAccessToken(
             LOG(Logger::INFO, L"Using the managed identity endpoint from IDENTITY_ENDPOINT.");
             AppendQueryString(
                 identityEndpoint,
-                L"api-version=2020-06-01&resource=https%3A%2F%2Fstorage.azure.com");
+                L"api-version=2019-11-01&resource=https%3A%2F%2Fstorage.azure.com");
         }
         else
         {
+            if (hasIdentityEndpoint && !identityEndpoint.empty())
+            {
+                LOG(Logger::INFO, L"IDENTITY_ENDPOINT is set without IMDS_ENDPOINT; Azure Arc hIMDS is not selected.");
+            }
+
             identityEndpoint =
                 L"http://169.254.169.254/metadata/identity/oauth2/token";
             AppendQueryString(
@@ -1853,6 +2017,7 @@ HRESULT GetManagedIdentityAccessToken(
         }
 
         std::string httpResponse;
+        SensitiveStringGuard<std::string> responseGuard(httpResponse);
         HRESULT hr = S_OK;
 
         if (isArcEndpoint)
@@ -1881,6 +2046,7 @@ HRESULT GetManagedIdentityAccessToken(
                 ParseHimdsChallengePath(responseInfo.wwwAuthenticate);
             std::wstring challengeSecret =
                 ReadHimdsChallengeSecret(challengePath);
+            SensitiveStringGuard<std::wstring> challengeGuard(challengeSecret);
 
             httpResponse.clear();
             hr = DoHttpVerb(
@@ -1889,11 +2055,6 @@ HRESULT GetManagedIdentityAccessToken(
                 HttpRequestKind::ManagedIdentity,
                 challengeSecret,
                 httpResponse);
-
-            SecureZeroMemory(
-                &challengeSecret[0],
-                challengeSecret.size() * sizeof(wchar_t));
-            challengeSecret.clear();
 
             if (FAILED(hr))
             {
@@ -1915,20 +2076,14 @@ HRESULT GetManagedIdentityAccessToken(
         }
 
         std::string accessTokenUtf8 = GetValueFromJson(httpResponse, "access_token");
-        if (!httpResponse.empty())
-        {
-            SecureZeroMemory(&httpResponse[0], httpResponse.size());
-            httpResponse.clear();
-        }
+        SensitiveStringGuard<std::string> accessTokenGuard(accessTokenUtf8);
 
         if (accessTokenUtf8.empty())
         {
             LOG(Logger::ERR, L"The managed identity response did not contain an access token.");
             throw HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
         }
-
         accessToken = UTF8ToWide(accessTokenUtf8);
-        SecureZeroMemory(&accessTokenUtf8[0], accessTokenUtf8.size());
         return S_OK;
     }
     catch (const std::exception& e)
@@ -2091,6 +2246,7 @@ HRESULT SmbSetCredentialInternal(
 
         std::string strHttpResponse;
         std::wstring wstrAccessToken;
+        SensitiveStringGuard<std::wstring> accessTokenGuard(wstrAccessToken);
 
         if (bGetTokenFromImds)
         {
@@ -2111,11 +2267,6 @@ HRESULT SmbSetCredentialInternal(
             HttpRequestKind::AzureFiles,
             wstrAccessToken,
             strHttpResponse);
-
-        SecureZeroMemory(
-            &wstrAccessToken[0],
-            wstrAccessToken.size() * sizeof(wchar_t));
-        wstrAccessToken.clear();
 
         if (FAILED(hrError))
         {

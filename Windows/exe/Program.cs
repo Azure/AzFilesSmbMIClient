@@ -38,7 +38,7 @@ namespace AzFilesSmbMIClient
             TraceMessage($"  AzFilesSmbMIClient.exe refresh --uri https://myaccount.file.core.windows.net/ --clientId myclient --expiry 3600");
             TraceMessage($"  AzFilesSmbMIClient.exe clear --uri https://myaccount.file.core.windows.net/");
             TraceMessage($"");
-            TraceMessage($"Azure Arc-enabled servers automatically use IDENTITY_ENDPOINT and the machine's system-assigned identity.");
+            TraceMessage($"Azure Arc-enabled servers automatically use IDENTITY_ENDPOINT and IMDS_ENDPOINT with the machine's system-assigned identity.");
             TraceMessage($"");
         }
 
