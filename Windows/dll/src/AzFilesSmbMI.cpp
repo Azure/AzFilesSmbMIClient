@@ -1398,7 +1398,6 @@ HRESULT DoHttpVerb(
         gmtime_s(&timeinfo, &rawtime);
         strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &timeinfo);
         std::wstring xMsDateHeader = L"x-ms-date: " + std::wstring(buffer, buffer + strlen(buffer));
-        std::wstring wstrToken = L"Authorization: Bearer " + authorizationValue;
         std::wstring wstrApiVersion = L"x-ms-version: 2024-05-04"; // YYYY-DD-MM
         BOOL bResult = FALSE;
 
@@ -1428,6 +1427,8 @@ HRESULT DoHttpVerb(
         }
         else
         {
+            std::wstring wstrToken = L"Authorization: Bearer " + authorizationValue;
+
             // For Azure Storage requests, add required headers
             bResult = ::WinHttpAddRequestHeaders(hRequest,
                                                  wstrApiVersion.c_str(),
