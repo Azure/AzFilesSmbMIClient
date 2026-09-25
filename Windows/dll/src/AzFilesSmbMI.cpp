@@ -31,6 +31,7 @@ Abstract:
 #include <chrono>
 #include <unordered_map>
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <stdexcept>
 #include "Logger.h"
@@ -117,16 +118,18 @@ using UniqueHandle = std::unique_ptr<std::remove_pointer<HANDLE>::type, HandleDe
 
 struct RefreshContext
 {
-    PTP_TIMER    timer;
-    UniqueHandle shEvent;
-    HRESULT      hrRefresh;
+    PTP_TIMER           timer;
+    UniqueHandle        initialRefreshEvent;
+    UniqueHandle        refreshFailureEvent;
+    std::atomic<HRESULT> hrRefresh;
     std::wstring wstrFileEndpointUri;
     std::wstring wstrClientID;
 
     RefreshContext(_In_ PCWSTR pwszFileEndpointUri, _In_opt_ PCWSTR pwszClientID = nullptr)
     {
         timer = nullptr;
-        shEvent = nullptr;
+        initialRefreshEvent = nullptr;
+        refreshFailureEvent = nullptr;
         hrRefresh = S_FALSE;
         wstrFileEndpointUri = pwszFileEndpointUri;
         if (pwszClientID && pwszClientID[0] != L'\0')
@@ -1965,18 +1968,10 @@ HRESULT GetManagedIdentityAccessToken(
         const bool hasIdentityEndpoint = TryGetEnvironmentVariableValue(
             L"IDENTITY_ENDPOINT",
             identityEndpoint);
-        std::wstring imdsEndpoint;
-        const bool hasImdsEndpoint = TryGetEnvironmentVariableValue(
-            L"IMDS_ENDPOINT",
-            imdsEndpoint);
-
         identityEndpoint = TrimWhitespace(identityEndpoint);
-        imdsEndpoint = TrimWhitespace(imdsEndpoint);
         const bool isArcEndpoint =
             hasIdentityEndpoint &&
-            !identityEndpoint.empty() &&
-            hasImdsEndpoint &&
-            !imdsEndpoint.empty();
+            !identityEndpoint.empty();
 
         if (isArcEndpoint)
         {
@@ -1993,11 +1988,6 @@ HRESULT GetManagedIdentityAccessToken(
         }
         else
         {
-            if (hasIdentityEndpoint && !identityEndpoint.empty())
-            {
-                LOG(Logger::INFO, L"IDENTITY_ENDPOINT is set without IMDS_ENDPOINT; Azure Arc hIMDS is not selected.");
-            }
-
             identityEndpoint =
                 L"http://169.254.169.254/metadata/identity/oauth2/token";
             AppendQueryString(
@@ -2331,11 +2321,14 @@ VOID CALLBACK SmbRefreshTimerCallback(
     if (FAILED(hrError))
     {
         LOG(Logger::ERR, L"SmbSetCredentialInternal hr=0x%X", hrError);
-        pContext->hrRefresh = hrError;
+        pContext->hrRefresh.store(hrError);
+        ::SetEvent(pContext->initialRefreshEvent.get());
+        ::SetEvent(pContext->refreshFailureEvent.get());
         return;
     }
 
-    ::SetEvent(pContext->shEvent.get());  // Signal main thread that we're done
+    pContext->hrRefresh.store(S_OK);
+    ::SetEvent(pContext->initialRefreshEvent.get());
 
     LARGE_INTEGER liDueTime;
     liDueTime.QuadPart = -(static_cast<LONGLONG>(dwCredentialExpiresInSeconds) * 10'000'000LL);
@@ -2374,8 +2367,16 @@ HRESULT SmbRefreshCredentialInternal(
 
         auto ctx = std::make_shared<RefreshContext>(wstrFileEndpointUri.c_str(), pwszClientID);
 
-        ctx->shEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
-        if (!ctx->shEvent) {
+        ctx->initialRefreshEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        if (!ctx->initialRefreshEvent) {
+            DWORD dwError = GetLastError();
+            hrError = HRESULT_FROM_WIN32(dwError);
+            LOG(Logger::ERR, L"CreateEvent failed with error %d", dwError);
+            throw hrError;
+        }
+
+        ctx->refreshFailureEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        if (!ctx->refreshFailureEvent) {
             DWORD dwError = GetLastError();
             hrError = HRESULT_FROM_WIN32(dwError);
             LOG(Logger::ERR, L"CreateEvent failed with error %d", dwError);
@@ -2404,7 +2405,23 @@ HRESULT SmbRefreshCredentialInternal(
         ::SetThreadpoolTimer(ctx->timer, &ftDueTime, 0, 0);
 
         // Wait for the callback to signal completion of the first refresh
-        ::WaitForSingleObject(ctx->shEvent.get(), INFINITE);
+        DWORD waitResult = ::WaitForSingleObject(
+            ctx->initialRefreshEvent.get(),
+            INFINITE);
+        if (waitResult == WAIT_FAILED)
+        {
+            throw HRESULT_FROM_WIN32(GetLastError());
+        }
+        if (waitResult != WAIT_OBJECT_0)
+        {
+            throw E_UNEXPECTED;
+        }
+
+        hrError = ctx->hrRefresh.load();
+        if (FAILED(hrError))
+        {
+            throw hrError;
+        }
     }
     catch (const std::exception& e)
     {
@@ -2419,6 +2436,70 @@ HRESULT SmbRefreshCredentialInternal(
 
     LOG(Logger::VERBOSE, L"END", hrError);
     return hrError;
+}
+
+HRESULT SmbWaitForRefreshFailureInternal(
+    _In_ PCWSTR pwszFileEndpointUri,
+    _In_ DWORD dwTimeoutMilliseconds
+    )
+{
+    s_logger.Initialize();
+
+    try
+    {
+        if (pwszFileEndpointUri == nullptr || pwszFileEndpointUri[0] == L'\0')
+        {
+            LOG(Logger::ERR, L"File URI cannot be null or empty.");
+            throw E_INVALIDARG;
+        }
+
+        std::wstring wstrFileEndpointUri = pwszFileEndpointUri;
+        if (wstrFileEndpointUri.back() != L'/')
+        {
+            wstrFileEndpointUri += L'/';
+        }
+
+        std::shared_ptr<RefreshContext> ctx;
+        {
+            std::lock_guard<std::mutex> lock(timerMapMutex);
+            auto it = s_timerMap.find(wstrFileEndpointUri);
+            if (it == s_timerMap.end())
+            {
+                LOG(Logger::ERR, L"No refresh registration found for %ls", wstrFileEndpointUri.c_str());
+                throw HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+            }
+            ctx = it->second;
+        }
+
+        DWORD waitResult = ::WaitForSingleObject(
+            ctx->refreshFailureEvent.get(),
+            dwTimeoutMilliseconds);
+        if (waitResult == WAIT_TIMEOUT)
+        {
+            return S_FALSE;
+        }
+        if (waitResult == WAIT_FAILED)
+        {
+            throw HRESULT_FROM_WIN32(GetLastError());
+        }
+        if (waitResult != WAIT_OBJECT_0)
+        {
+            throw E_UNEXPECTED;
+        }
+
+        HRESULT hrRefresh = ctx->hrRefresh.load();
+        return FAILED(hrRefresh) ? hrRefresh : E_UNEXPECTED;
+    }
+    catch (const std::exception& e)
+    {
+        LOGA(Logger::ERR, "Generic exception '%s'", e.what());
+        return E_FAIL;
+    }
+    catch (const HRESULT& caughtHr)
+    {
+        LOG(Logger::ERR, L"HRESULT exception hr=0x%X", caughtHr);
+        return caughtHr;
+    }
 }
 
 HRESULT SmbClearCredentialInternal(
@@ -2500,6 +2581,16 @@ HRESULT SmbRefreshCredential(
 )
 {
     return SmbRefreshCredentialInternal(pwszFileEndpointUri, pwszClientID);
+}
+
+HRESULT SmbWaitForRefreshFailure(
+    _In_ PCWSTR pwszFileEndpointUri,
+    _In_ DWORD dwTimeoutMilliseconds
+)
+{
+    return SmbWaitForRefreshFailureInternal(
+        pwszFileEndpointUri,
+        dwTimeoutMilliseconds);
 }
 
 HRESULT SmbClearCredential(

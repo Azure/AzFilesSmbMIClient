@@ -40,7 +40,7 @@ namespace AzFilesSmbMIClient
             TraceMessage($"  AzFilesSmbMIClient.exe refresh --uri https://myaccount.file.core.windows.net/ --clientId myclient --expiry 3600");
             TraceMessage($"  AzFilesSmbMIClient.exe clear --uri https://myaccount.file.core.windows.net/");
             TraceMessage($"");
-            TraceMessage($"Azure Arc-enabled servers automatically use IDENTITY_ENDPOINT and IMDS_ENDPOINT with the machine's system-assigned identity.");
+            TraceMessage($"Azure Arc-enabled servers automatically use IDENTITY_ENDPOINT with the machine's system-assigned identity.");
             TraceMessage($"");
         }
 
@@ -152,9 +152,16 @@ namespace AzFilesSmbMIClient
                 if (AzFilesSmbMIClientErrorCode.Succeeded(hResult))
                 {
                     TraceMessage($"Auto refresh is running in the background; Will end only after {expireTimeSeconds} seconds or if it encounters an error.");
-                    SleepForSeconds(expireTimeSeconds);
-
-                    TraceMessage($"Auto refresh will end now.");
+                    int refreshResult = WaitForRefreshFailure(uri, expireTimeSeconds);
+                    if (AzFilesSmbMIClientErrorCode.Failed(refreshResult))
+                    {
+                        hResult = refreshResult;
+                        TraceMessage($"Auto refresh encountered an error and will end now.");
+                    }
+                    else
+                    {
+                        TraceMessage($"Auto refresh will end now.");
+                    }
                 }
 
                 TraceMessage($"Main thread exiting.");
@@ -176,19 +183,28 @@ namespace AzFilesSmbMIClient
             return hResult;
         }
 
-        private static void SleepForSeconds(int seconds)
+        private static int WaitForRefreshFailure(string uri, int seconds)
         {
             long remainingMilliseconds = (long)seconds * 1000;
 
             while (remainingMilliseconds > 0)
             {
-                int sleepMilliseconds = (int)Math.Min(
+                uint waitMilliseconds = (uint)Math.Min(
                     remainingMilliseconds,
                     int.MaxValue);
 
-                Thread.Sleep(sleepMilliseconds);
-                remainingMilliseconds -= sleepMilliseconds;
+                int hResult = AzFilesSmbMI.SmbWaitForRefreshFailure(
+                    uri,
+                    waitMilliseconds);
+                if (hResult != AzFilesSmbMIClientErrorCode.S_FALSE)
+                {
+                    return hResult;
+                }
+
+                remainingMilliseconds -= waitMilliseconds;
             }
+
+            return AzFilesSmbMIClientErrorCode.S_FALSE;
         }
 
         /// <summary>

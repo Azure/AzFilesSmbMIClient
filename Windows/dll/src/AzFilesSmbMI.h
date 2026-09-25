@@ -34,6 +34,11 @@ extern "C" AZFILESSMBMI_API HRESULT SmbRefreshCredential(
     _In_ PCWSTR pwszClientID
     );
 
+extern "C" AZFILESSMBMI_API HRESULT SmbWaitForRefreshFailure(
+    _In_ PCWSTR pwszFileEndpointUri,
+    _In_ DWORD dwTimeoutMilliseconds
+    );
+
 extern "C" AZFILESSMBMI_API HRESULT SmbClearCredential(
     _In_ PCWSTR pwszFileEndpointUri
     );
@@ -48,6 +53,11 @@ HRESULT SmbSetCredentialInternal(
 HRESULT SmbRefreshCredentialInternal(
     _In_      PCWSTR pwszFileEndpointUri,
     _In_opt_  PCWSTR pwszClientID
+    );
+
+HRESULT SmbWaitForRefreshFailureInternal(
+    _In_ PCWSTR pwszFileEndpointUri,
+    _In_ DWORD dwTimeoutMilliseconds
     );
 
 HRESULT SmbClearCredentialInternal(
