@@ -43,6 +43,13 @@ namespace Microsoft.Azure.Files
         [DllImport("AzFilesSmbMI.dll", SetLastError = false,
             CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        public static extern int SmbWaitForRefreshFailure(
+                    string FileEndpointUri,
+                    uint TimeoutMilliseconds);
+
+        [DllImport("AzFilesSmbMI.dll", SetLastError = false,
+            CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         public static extern int SmbClearCredential(
                     string FileEndpointUri);
 

@@ -17,6 +17,8 @@ namespace AzFilesSmbMIClient
 
     class Program
     {
+        private const int DefaultRefreshExpiryInSeconds = int.MaxValue;
+
         static public void ShowUsage()
         {
             TraceMessage($"Usage: AzFilesSmbMIClient.exe <command> [options]");
@@ -29,14 +31,16 @@ namespace AzFilesSmbMIClient
             TraceMessage($"Options:");
             TraceMessage($"  --uri <uri>               - (Required) Azure Files endpoint URI");
             TraceMessage($"  --token <token>           - OAuth token (for 'set' command)");
-            TraceMessage($"  --clientId <id>           - User managed identity client ID");
-            TraceMessage($"  --expiry <seconds>        - Time in seconds for refresh operation (default: 86400)");
+            TraceMessage($"  --clientId <id>           - User managed identity client ID (Azure VM only)");
+            TraceMessage($"  --expiry <seconds>        - Time in seconds for refresh operation (default: {DefaultRefreshExpiryInSeconds})");
             TraceMessage($"");
             TraceMessage($"Examples:");
             TraceMessage($"  AzFilesSmbMIClient.exe set --uri https://myaccount.file.core.windows.net/");
             TraceMessage($"  AzFilesSmbMIClient.exe set --uri https://myaccount.file.core.windows.net/ --token mytoken");
             TraceMessage($"  AzFilesSmbMIClient.exe refresh --uri https://myaccount.file.core.windows.net/ --clientId myclient --expiry 3600");
             TraceMessage($"  AzFilesSmbMIClient.exe clear --uri https://myaccount.file.core.windows.net/");
+            TraceMessage($"");
+            TraceMessage($"Azure Arc-enabled servers automatically use IDENTITY_ENDPOINT with the machine's system-assigned identity.");
             TraceMessage($"");
         }
 
@@ -93,7 +97,9 @@ namespace AzFilesSmbMIClient
             string uri = parameters["uri"];
             string token = parameters.ContainsKey("token") ? parameters["token"] : "";
             string clientId = parameters.ContainsKey("clientId") ? parameters["clientId"] : "";
-            string refreshExpiryInSeconds = parameters.ContainsKey("expiry") ? parameters["expiry"] : "86400";
+            string refreshExpiryInSeconds = parameters.ContainsKey("expiry")
+                ? parameters["expiry"]
+                : DefaultRefreshExpiryInSeconds.ToString();
 
             int hResult = AzFilesSmbMIClientErrorCode.S_FALSE;
 
@@ -103,11 +109,11 @@ namespace AzFilesSmbMIClient
                 
                 if (token.Length == 0)
                 {
-                    loggingMessage.Append("Token will be obtained via IMDS endpoint. ");
+                    loggingMessage.Append("Token will be obtained via the managed identity endpoint. ");
                 }
                 else
                 {
-                    loggingMessage.Append($"Using OAuth Token: '{token}' ");
+                    loggingMessage.Append("Using supplied OAuth token. ");
                 }
 
                 if (clientId.Length > 0)
@@ -133,9 +139,10 @@ namespace AzFilesSmbMIClient
                     return -1;
                 }
 
-                if (!int.TryParse(refreshExpiryInSeconds, out int expireTimeSeconds))
+                if (!int.TryParse(refreshExpiryInSeconds, out int expireTimeSeconds) ||
+                    expireTimeSeconds < 0)
                 {
-                    TraceMessage($"Please provide a valid duration for how long to keep refreshing.");
+                    TraceMessage($"Please provide a non-negative duration for how long to keep refreshing.");
                     ShowUsage();
                     return AzFilesSmbMIClientErrorCode.E_INVALIDARG;
                 }
@@ -145,9 +152,16 @@ namespace AzFilesSmbMIClient
                 if (AzFilesSmbMIClientErrorCode.Succeeded(hResult))
                 {
                     TraceMessage($"Auto refresh is running in the background; Will end only after {expireTimeSeconds} seconds or if it encounters an error.");
-                    Thread.Sleep(TimeSpan.FromSeconds(expireTimeSeconds));
-
-                    TraceMessage($"Auto refresh will end now.");
+                    int refreshResult = WaitForRefreshFailure(uri, expireTimeSeconds);
+                    if (AzFilesSmbMIClientErrorCode.Failed(refreshResult))
+                    {
+                        hResult = refreshResult;
+                        TraceMessage($"Auto refresh encountered an error and will end now.");
+                    }
+                    else
+                    {
+                        TraceMessage($"Auto refresh will end now.");
+                    }
                 }
 
                 TraceMessage($"Main thread exiting.");
@@ -167,6 +181,30 @@ namespace AzFilesSmbMIClient
             }
 
             return hResult;
+        }
+
+        private static int WaitForRefreshFailure(string uri, int seconds)
+        {
+            long remainingMilliseconds = (long)seconds * 1000;
+
+            while (remainingMilliseconds > 0)
+            {
+                uint waitMilliseconds = (uint)Math.Min(
+                    remainingMilliseconds,
+                    int.MaxValue);
+
+                int hResult = AzFilesSmbMI.SmbWaitForRefreshFailure(
+                    uri,
+                    waitMilliseconds);
+                if (hResult != AzFilesSmbMIClientErrorCode.S_FALSE)
+                {
+                    return hResult;
+                }
+
+                remainingMilliseconds -= waitMilliseconds;
+            }
+
+            return AzFilesSmbMIClientErrorCode.S_FALSE;
         }
 
         /// <summary>
